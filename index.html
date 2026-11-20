@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AZ-104 Ops Quest — Northstar Retail Study Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --background: #0b1120;
+      --content: #111827;
+      --card: #161f33;
+      --border: #28354d;
+      --card-border: #233047;
+      --foreground: #f1f5f9;
+      --muted-foreground: #94a3b8;
+      --primary: #3b82f6;
+      --primary-foreground: #ffffff;
+      --secondary: #1e293b;
+      --secondary-foreground: #e2e8f0;
+      --link: #60a5fa;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --code-foreground: #93c5fd;
+      --chart-1: #a78bfa;
+      --chart-2: #38bdf8;
+      --chart-3: #34d399;
+      --chart-4: #fbbf24;
+      --chart-5: #fb7185;
+    }
+    html.light {
+      --background: #f8fafc;
+      --content: #f1f5f9;
+      --card: #ffffff;
+      --border: #cbd5e1;
+      --card-border: #e2e8f0;
+      --foreground: #0f172a;
+      --muted-foreground: #475569;
+      --primary: #2563eb;
+      --primary-foreground: #ffffff;
+      --secondary: #e2e8f0;
+      --secondary-foreground: #1e293b;
+      --link: #2563eb;
+      --success: #16a34a;
+      --warning: #d97706;
+      --error: #dc2626;
+      --code-foreground: #1d4ed8;
+      --chart-1: #7c3aed;
+      --chart-2: #0284c7;
+      --chart-3: #059669;
+      --chart-4: #d97706;
+      --chart-5: #e11d48;
+    }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .node-card {
+      transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+    }
+    .node-card:hover {
+      transform: translateY(-2px);
+    }
+    .node-selected {
+      box-shadow: 0 0 0 2px var(--primary);
+      border-color: var(--primary) !important;
+    }
+    .node-connected {
+      border-color: var(--chart-2) !important;
+    }
+    .node-dimmed {
+      opacity: 0.42;
+    }
+    .conn-line {
+      transition: stroke-opacity 180ms ease, stroke-width 180ms ease;
+    }
+    .tab-active {
+      background-color: var(--primary);
+      color: var(--primary-foreground);
+    }
+    .tab-inactive {
+      background-color: transparent;
+      color: var(--muted-foreground);
+    }
+    .tab-inactive:hover {
+      background-color: var(--secondary);
+      color: var(--foreground);
+    }
+  </style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased m-0 p-0">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+
+    <!-- Top Header + XP Rank + 25-Min Sprint Timer -->
+    <header class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--primary)] text-[var(--primary-foreground)]">AZ-104 Ops Quest</span>
+            <span id="rank-pill" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--secondary)] text-[var(--secondary-foreground)]">Rank 1: Day-One Intern</span>
+            <span class="text-xs text-[var(--muted-foreground)]">Post-Jan 2027 Target • 20–30 min/weekday</span>
+          </div>
+          <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Northstar Retail — Build, Connect &amp; Defend Azure</h1>
+          <p class="text-sm text-[var(--muted-foreground)]">Every week opens with a company crisis, wires into the same live Azure stack, and links straight back to official Microsoft Learn docs.</p>
+        </div>
+
+        <!-- Compact Sprint Timer + XP Pill -->
+        <div class="flex flex-wrap items-center gap-3 shrink-0">
+          <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-lg px-3.5 py-2 flex items-center gap-3">
+            <div>
+              <div class="text-xs text-[var(--muted-foreground)]">Daily Sprint</div>
+              <div id="timer-display" class="text-lg font-mono font-bold tabular-nums leading-tight">25:00</div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button id="timer-toggle" class="px-2.5 py-1.5 rounded-md text-xs font-semibold bg-[var(--primary)] text-[var(--primary-foreground)] cursor-pointer">Start</button>
+              <button id="timer-reset" class="px-2 py-1.5 rounded-md text-xs font-medium bg-[var(--secondary)] text-[var(--secondary-foreground)] cursor-pointer">Reset</button>
+            </div>
+          </div>
+          <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-lg px-3.5 py-2 text-right min-w-[110px]">
+            <div class="text-xs text-[var(--muted-foreground)]">Total XP</div>
+            <div class="text-lg font-mono font-bold tabular-nums leading-tight"><span id="xp-display">0</span> <span class="text-xs font-normal text-[var(--muted-foreground)]">XP</span></div>
+          </div>
+          <button id="theme-toggle" class="px-3 py-2 rounded-lg text-xs font-semibold bg-[var(--content)] border border-[var(--card-border)] text-[var(--foreground)] cursor-pointer hover:bg-[var(--secondary)]" title="Switch light/dark theme">☀ Light</button>
+        </div>
+      </div>
+
+      <!-- XP Progress Bar + Quick Official Microsoft Links -->
+      <div class="pt-3 border-t border-[var(--card-border)] flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div class="flex-1 max-w-md space-y-1">
+          <div class="flex items-center justify-between text-xs">
+            <span id="next-rank-label" class="text-[var(--muted-foreground)]">Next rank: Junior Cloud Admin (200 XP)</span>
+            <span class="font-mono text-[var(--muted-foreground)]"><span id="total-done">0</span>/40 sprints</span>
+          </div>
+          <div class="w-full h-2 rounded-full bg-[var(--secondary)] overflow-hidden">
+            <div id="xp-bar" class="h-full rounded-full transition-all" style="width: 0%; background: var(--primary);"></div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <span class="text-[var(--muted-foreground)] font-semibold">Official MS Sources:</span>
+          <a href="https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-104" target="_blank" rel="noopener" class="px-2.5 py-1 rounded-md bg-[var(--content)] border border-[var(--card-border)] text-[var(--link)] hover:underline">Study Guide</a>
+          <a href="https://learn.microsoft.com/en-us/credentials/certifications/azure-administrator/" target="_blank" rel="noopener" class="px-2.5 py-1 rounded-md bg-[var(--content)] border border-[var(--card-border)] text-[var(--link)] hover:underline">Exam &amp; Practice Assessment</a>
+          <a href="https://github.com/MicrosoftLearning/AZ-104-MicrosoftAzureAdministrator" target="_blank" rel="noopener" class="px-2.5 py-1 rounded-md bg-[var(--content)] border border-[var(--card-border)] text-[var(--link)] hover:underline">MS GitHub Labs</a>
+          <a href="https://learn.microsoft.com/en-us/credentials/support/exam-duration-exam-experience" target="_blank" rel="noopener" class="px-2.5 py-1 rounded-md bg-[var(--content)] border border-[var(--card-border)] text-[var(--link)] hover:underline">Open-Book Rules</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="flex flex-wrap gap-2 border-b border-[var(--border)] pb-3" role="tablist">
+      <button data-tab="map" class="tab-btn tab-active px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors">1. Connected Map</button>
+      <button data-tab="sprints" class="tab-btn tab-inactive px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors">2. 8-Week Episodes</button>
+      <button data-tab="incidents" class="tab-btn tab-inactive px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors">3. P1 Incident Queue <span id="incident-badge" class="ml-1 px-1.5 py-0.5 rounded text-xs font-mono bg-[var(--secondary)] text-[var(--secondary-foreground)]">0/6</span></button>
+      <button data-tab="speedrun" class="tab-btn tab-inactive px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors">4. 60s Trap Speed Run <span id="best-badge" class="ml-1 px-1.5 py-0.5 rounded text-xs font-mono bg-[var(--secondary)] text-[var(--secondary-foreground)]">Best: 0</span></button>
+      <button data-tab="blueprint" class="tab-btn tab-inactive px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors">5. MS Study Guide <span id="blueprint-badge" class="ml-1 px-1.5 py-0.5 rounded text-xs font-mono bg-[var(--secondary)] text-[var(--secondary-foreground)]">0/81</span></button>
+    </nav>
+
+    <!-- ========================================================= -->
+    <!-- TAB 1: INTERACTIVE ARCHITECTURE MAP                       -->
+    <!-- ========================================================= -->
+    <section id="tab-map" class="tab-panel space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+        <!-- Visual Diagram Canvas -->
+        <div class="lg:col-span-7 bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 space-y-4">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h2 class="text-base font-bold">Northstar Retail — Live Topology</h2>
+              <p class="text-xs text-[var(--muted-foreground)]">Click any block to see cross-domain wiring, CLI/Bicep, and its official Microsoft Learn link.</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs flex-wrap">
+              <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background: var(--chart-1);"></span>Identity</span>
+              <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background: var(--chart-2);"></span>Network</span>
+              <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background: var(--chart-3);"></span>Compute</span>
+              <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background: var(--chart-4);"></span>Storage</span>
+              <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background: var(--chart-5);"></span>Monitor</span>
+            </div>
+          </div>
+
+          <!-- Layered Interactive Architecture Grid with SVG Connector Overlay -->
+          <div id="arch-stage" class="relative bg-[var(--content)] border border-[var(--card-border)] rounded-xl p-4 space-y-4">
+            <svg id="arch-svg" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;"></svg>
+
+            <!-- Layer 1 -->
+            <div class="relative" style="z-index: 2;">
+              <div class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Control Plane &amp; Guardrails (Applies Everywhere)</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button data-node="entra" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold" style="color: var(--chart-1);">Identity • Wk 1</span>
+                    <span class="text-xs font-mono text-[var(--muted-foreground)]">20–25%</span>
+                  </div>
+                  <div class="text-sm font-bold mt-0.5">Entra ID + RBAC + Managed ID</div>
+                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Users, groups, SSPR, role scopes &amp; passwordless auth</div>
+                </button>
+                <button data-node="governance" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold" style="color: var(--chart-1);">Governance • Wk 1</span>
+                    <span class="text-xs font-mono text-[var(--muted-foreground)]">20–25%</span>
+                  </div>
+                  <div class="text-sm font-bold mt-0.5">Policy, Locks &amp; Cost Budgets</div>
+                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Allowed regions, tags, CanNotDelete locks &amp; $10 budget</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Layer 2 -->
+            <div class="relative" style="z-index: 2;">
+              <div class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Hub VNet (10.0.0.0/16) — Ingress &amp; Secure Admin</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button data-node="ingress" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold" style="color: var(--chart-2);">Networking • Wk 6</span>
+                    <span class="text-xs font-mono text-[var(--muted-foreground)]">15–20%</span>
+                  </div>
+                  <div class="text-sm font-bold mt-0.5">Load Balancer &amp; Azure DNS</div>
+                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Internal/Public Standard LB, health probes &amp; DNS zones</div>
+                </button>
+                <button data-node="bastion" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold" style="color: var(--chart-2);">Networking • Wk 2 &amp; 6</span>
+                    <span class="text-xs font-mono text-[var(--muted-foreground)]">15–20%</span>
+                  </div>
+                  <div class="text-sm font-bold mt-0.5">Hub Peering, UDR &amp; Bastion</div>
+                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Zero public IPs on VMs, hub-spoke peering &amp; custom routes</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Layer 3 -->
+            <div class="relative" style="z-index: 2;">
+              <div class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Spoke VNets (Peered to Hub — Non-Transitive!)</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button data-node="compute" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold" style="color: var(--chart-3);">Compute • Wk 4 &amp; 5</span>
+                    <span class="text-xs font-mono text-[var(--muted-foreground)]">20–25%</span>
+                  </div>
+                  <div class="text-sm font-bold mt-0.5">App Spoke (10.1.0.0/16)</div>
+                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Bicep VMs, VMSS, App Service, ACR/ACI/ACA + NSGs</div>
+                </button>
+                <button data-node="storage" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold" style="color: var(--chart-4);">Storage • Wk 3</span>
+                    <span class="text-xs font-mono text-[var(--muted-foreground)]">15–20%</span>
+                  </div>
+                  <div class="text-sm font-bold mt-0.5">Data Spoke + Private Endpoint</div>
+                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Blob tiers, Object Rep, Azure Files, SAS vs RBAC, DNS</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Layer 4 -->
+            <div class="relative" style="z-index: 2;">
+              <div class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Operations, Telemetry &amp; Resilience</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button data-node="monitor" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold" style="color: var(--chart-5);">Monitoring • Wk 7</span>
+                    <span class="text-xs font-mono text-[var(--muted-foreground)]">10–15%</span>
+                  </div>
+                  <div class="text-sm font-bold mt-0.5">Azure Monitor &amp; Network Watcher</div>
+                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Log Analytics, Insights, Alert Processing Rules, IP Flow</div>
+                </button>
+                <button data-node="backup" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold" style="color: var(--chart-5);">Recovery • Wk 7</span>
+                    <span class="text-xs font-mono text-[var(--muted-foreground)]">10–15%</span>
+                  </div>
+                  <div class="text-sm font-bold mt-0.5">Recovery &amp; Backup Vaults</div>
+                  <div class="text-xs text-[var(--muted-foreground)] mt-1">VM/Files Backup, Azure Backup Vault, Soft Delete &amp; ASR</div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inspector Panel -->
+        <div id="node-inspector" class="lg:col-span-5 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- TAB 2: 8-WEEK STORY-DRIVEN SPRINT BOARD                   -->
+    <!-- ========================================================= -->
+    <section id="tab-sprints" class="tab-panel hidden space-y-5">
+      <!-- Domain Weight Progress Overview -->
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 space-y-3">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h2 class="text-base font-bold">Official AZ-104 Exam Blueprint Coverage</h2>
+            <p class="text-xs text-[var(--muted-foreground)]">Aligned to Microsoft's official Study Guide (verified Oct 30, 2026). Check each sprint to earn +25 XP.</p>
+          </div>
+          <button id="reset-progress" class="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] underline cursor-pointer">Reset checkboxes</button>
+        </div>
+        <div id="domain-bars" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"></div>
+      </div>
+
+      <!-- Weeks List -->
+      <div id="weeks-container" class="space-y-3"></div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- TAB 3: LIVE INCIDENT SIMULATOR                            -->
+    <!-- ========================================================= -->
+    <section id="tab-incidents" class="tab-panel hidden space-y-4">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--card-border)] pb-3">
+          <div>
+            <h2 class="text-base font-bold">Northstar Retail — P1 Incident Queue (+50 XP each)</h2>
+            <p class="text-xs text-[var(--muted-foreground)]">Real AZ-104 questions are disguised troubleshooting tickets. Diagnose the root cause and click the official doc link to lock it in.</p>
+          </div>
+          <div class="text-xs font-mono px-3 py-1.5 rounded-lg bg-[var(--content)] border border-[var(--card-border)]">
+            Solved: <span id="inc-score" class="font-bold">0</span> / 6
+          </div>
+        </div>
+        <div id="ticket-pills" class="flex flex-wrap gap-2"></div>
+        <div id="ticket-view" class="space-y-4 pt-1"></div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- TAB 4: 60-SECOND EXAM TRAP SPEED RUN                      -->
+    <!-- ========================================================= -->
+    <section id="tab-speedrun" class="tab-panel hidden space-y-4">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--card-border)] pb-3">
+          <div>
+            <h2 class="text-base font-bold">60-Second AZ-104 Exam Trap Speed Run</h2>
+            <p class="text-xs text-[var(--muted-foreground)]">Beat the clock! Spot the real Microsoft rule vs the classic exam trap. Build a combo streak for bonus XP.</p>
+          </div>
+          <div class="flex items-center gap-2 font-mono text-xs">
+            <span class="px-2.5 py-1.5 rounded-lg bg-[var(--content)] border border-[var(--card-border)]">Time: <strong id="sr-time">60s</strong></span>
+            <span class="px-2.5 py-1.5 rounded-lg bg-[var(--content)] border border-[var(--card-border)]">Score: <strong id="sr-score">0</strong></span>
+            <span class="px-2.5 py-1.5 rounded-lg bg-[var(--content)] border border-[var(--card-border)]">Streak: <strong id="sr-streak">0🔥</strong></span>
+          </div>
+        </div>
+
+        <div id="sr-stage" class="space-y-4">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- TAB 5: OFFICIAL MICROSOFT LEARN STUDY GUIDE (81/81)       -->
+    <!-- ========================================================= -->
+    <section id="tab-blueprint" class="tab-panel hidden space-y-4">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[var(--card-border)] pb-3">
+          <div>
+            <h2 class="text-base font-bold">Official Microsoft Learn AZ-104 Study Guide — 100% Coverage (81 Objectives)</h2>
+            <p class="text-xs text-[var(--muted-foreground)]">Every single bullet from <a href="https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-104" target="_blank" rel="noopener" class="text-[var(--link)] hover:underline">Microsoft's official AZ-104 Study Guide</a> (verified Oct 30, 2026) mapped 1-to-1 to a Northstar sprint.</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <input id="bp-search" type="search" placeholder="Filter topics (e.g. Bicep, DNS, ASR)..." class="px-3 py-1.5 rounded-lg text-xs bg-[var(--content)] border border-[var(--card-border)] text-[var(--foreground)] w-56" />
+          </div>
+        </div>
+        <div id="bp-filters" class="flex flex-wrap gap-2"></div>
+        <div id="bp-list" class="space-y-4"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // =========================================================================
+    // DATA: ARCHITECTURE NODES & OFFICIAL MICROSOFT LEARN LINKS
+    // =========================================================================
+    const NODES = {
+      entra: {
+        title: "Entra ID, RBAC & Managed Identities",
+        domain: "Manage Azure Identities & Governance (20–25%)",
+        week: "Week 1 (Expanded in Wk 3 & 4)",
+        colorVar: "--chart-1",
+        msUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-identities-governance/",
+        msLabel: "MS Learn: Identities & Governance Path",
+        role: "Controls WHO (users, groups, external guests, SSPR) and WHAT (VMs/App Services) can touch Northstar resources — without pasting storage keys into code.",
+        connectsTo: ["governance", "compute", "storage"],
+        whyItConnects: [
+          "Compute → Storage: Your App VM uses a System-Assigned Managed Identity with 'Storage Blob Data Contributor' so it reads blobs with zero secrets.",
+          "Governance: RBAC flows down from Management Group → Subscription → Resource Group → Resource (additive permissions!).",
+          "Storage trap: Having 'Contributor' on a Storage Account does NOT grant access to read/write blobs via Entra ID — you need a Data Plane role."
+        ],
+        snippet: "az role assignment create --assignee <vm-principal-id> \\\n  --role \"Storage Blob Data Contributor\" \\\n  --scope <storage-account-id>",
+        examTrap: "Control Plane (Owner/Contributor) vs Data Plane (Storage Blob Data Contributor). Also know Dynamic Groups (requires Entra ID P1) and SSPR authentication methods."
+      },
+      governance: {
+        title: "Azure Policy, Resource Locks & Cost Budgets",
+        domain: "Manage Azure Identities & Governance (20–25%)",
+        week: "Week 1",
+        colorVar: "--chart-1",
+        msUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-identities-governance/",
+        msLabel: "MS Learn: Azure Policy & Governance",
+        role: "Guardrails that stop Marcus from Marketing from burning $800 on GPU VMs: restrict regions, enforce tags, lock shared infra, and alert at $5/$10 spend.",
+        connectsTo: ["entra", "compute", "storage", "monitor"],
+        whyItConnects: [
+          "Overrides RBAC: Even a Subscription Owner CANNOT delete a resource with a CanNotDelete lock until they remove the lock first.",
+          "ReadOnly Lock quirk: A ReadOnly lock on a Storage Account blocks listing access keys (because listing keys is a POST operation!).",
+          "Azure Policy evaluates at create/update and logs compliance events into Activity Logs."
+        ],
+        snippet: "az lock create --name lock-rg-data --lock-type CanNotDelete \\\n  --resource-group rg-northstar-data",
+        examTrap: "Resource Locks override Owners! And Azure Policy 'Deny' blocks new deployments, whereas 'Modify' / 'DeployIfNotExists' requires a Remediation Task + Managed Identity for existing resources."
+      },
+      ingress: {
+        title: "Azure Load Balancer & Azure DNS",
+        domain: "Implement & Manage Virtual Networking (15–20%)",
+        week: "Week 6",
+        colorVar: "--chart-2",
+        msUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-virtual-networks/",
+        msLabel: "MS Learn: Virtual Networking Path",
+        role: "The resilient Layer-4 front door (Internal or Public Standard Load Balancer) + Public/Private Azure DNS zones routing customers and internal apps cleanly.",
+        connectsTo: ["bastion", "compute", "monitor"],
+        whyItConnects: [
+          "Ingress → Compute: Health probes check your App Spoke VMs/VMSS. If your NSG blocks the 'AzureLoadBalancer' service tag, probes fail and traffic drops to 0%!",
+          "SKU alignment: Standard Load Balancer requires Standard Public IPs and explicit NSG rules (closed by default).",
+          "DNS: Private DNS Zones auto-register internal VM names across linked VNets (`northstar.internal`)."
+        ],
+        snippet: "az network lb probe create -g rg-northstar-net \\\n  --lb-name lb-northstar -n probe-http --protocol Http --port 80 --path /",
+        examTrap: "Standard LB requires Standard SKU Public IPs and is secure-by-default (NSG must explicitly allow inbound traffic + AzureLoadBalancer health probes)."
+      },
+      bastion: {
+        title: "Hub VNet, Peering, UDRs & Azure Bastion",
+        domain: "Implement & Manage Virtual Networking (15–20%)",
+        week: "Week 2 & Week 6",
+        colorVar: "--chart-2",
+        msUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-virtual-networks/",
+        msLabel: "MS Learn: Peering, UDRs & Bastion",
+        role: "The central transit hub (10.0.0.0/16) peered to App and Data spokes. Azure Bastion gives browser-based RDP/SSH into private VMs with zero Public IPs.",
+        connectsTo: ["ingress", "compute", "storage", "monitor"],
+        whyItConnects: [
+          "NON-TRANSITIVE PEERING: App Spoke peered to Hub + Data Spoke peered to Hub does NOT let App talk to Data! You need direct peering OR a Hub firewall/NVA + UDRs.",
+          "Bastion requires a subnet named EXACTLY `AzureBastionSubnet` (minimum `/26`).",
+          "Peering requires non-overlapping CIDR ranges across all peered VNets."
+        ],
+        snippet: "az network vnet peering create -g rg-northstar-net -n hub-to-app \\\n  --vnet-name vnet-hub --remote-vnet vnet-app --allow-vnet-access",
+        examTrap: "VNet peering is NEVER transitive by default, and must be created on BOTH VNets to reach 'Connected' status. Remember Azure reserves 5 IPs per subnet."
+      },
+      compute: {
+        title: "App Spoke: Bicep VMs, VMSS, App Service & Containers",
+        domain: "Deploy & Manage Azure Compute Resources (20–25%)",
+        week: "Week 4 & Week 5",
+        colorVar: "--chart-3",
+        msUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-compute-resources/",
+        msLabel: "MS Learn: Compute Resources Path",
+        role: "Where Northstar's workloads run (10.1.0.0/16): ARM/Bicep VMs, VMSS, App Service (slots/TLS/VNet), plus ACR, Azure Container Instances (ACI), and Container Apps (ACA).",
+        connectsTo: ["entra", "governance", "ingress", "bastion", "storage", "monitor", "backup"],
+        whyItConnects: [
+          "NSGs apply TWICE: Inbound traffic must pass Subnet NSG AND NIC NSG. Outbound passes NIC NSG AND Subnet NSG.",
+          "Compute → Storage: App Service uses Regional VNet Integration to hit the Private Endpoint in Data Spoke.",
+          "Compute → Backup & Monitor: VMs enroll in Recovery Services Vault and ship telemetry via Azure Monitor Agent (AMA)."
+        ],
+        snippet: "az deployment group create -g rg-northstar-app \\\n  --template-file main.bicep --parameters vmSize=Standard_B1s",
+        examTrap: "Availability Sets (single datacenter, FD/UD) vs Availability Zones (separate datacenters, 99.99% SLA). Deployment slots & custom TLS require Standard App Service Plan+."
+      },
+      storage: {
+        title: "Data Spoke: Storage Account, Private Endpoint & DNS",
+        domain: "Implement & Manage Storage (15–20%)",
+        week: "Week 3",
+        colorVar: "--chart-4",
+        msUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-storage/",
+        msLabel: "MS Learn: Implement & Manage Storage Path",
+        role: "Holds product images (Blob tiers, versioning, lifecycle, object replication) and finance shares (Azure Files + snapshots + Entra auth), sealed behind Private Endpoint.",
+        connectsTo: ["entra", "governance", "bastion", "compute", "backup"],
+        whyItConnects: [
+          "Service Endpoint keeps public IP but restricts traffic to Azure backbone; Private Endpoint assigns a real private IP (10.2.1.4) inside your subnet!",
+          "Without a Private DNS Zone (`privatelink.blob.core.windows.net`) linked to `vnet-app`, your VM resolves the public IP and gets 403 Firewall Blocked!",
+          "To revoke a Service SAS before expiry without rotating keys, tie it to a Stored Access Policy."
+        ],
+        snippet: "az storage account update -g rg-northstar-data -n stnorthstar01 \\\n  --public-network-access Disabled",
+        examTrap: "Archive blobs are OFFLINE (must rehydrate before reading). Object Replication requires Blob Versioning + Change Feed enabled on source and Versioning on destination."
+      },
+      monitor: {
+        title: "Azure Monitor, Insights & Network Watcher",
+        domain: "Monitor & Maintain Azure Resources (10–15%)",
+        week: "Week 7",
+        colorVar: "--chart-5",
+        msUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-monitor-backup-resources/",
+        msLabel: "MS Learn: Monitor & Back Up Path",
+        role: "Central Log Analytics Workspace + Metrics + Insights + Alert Rules / Action Groups / Alert Processing Rules + Network Watcher (IP Flow Verify, Next Hop, Connection Monitor).",
+        connectsTo: ["governance", "ingress", "bastion", "compute"],
+        whyItConnects: [
+          "Diagnostic Settings route platform logs (Storage, NSG, Activity Log) into Log Analytics for KQL queries.",
+          "Alert Processing Rules let you suppress alerts during planned maintenance windows (without disabling every alert rule!).",
+          "Network Watcher IP Flow Verify tells you in 5 seconds *which exact NSG rule* dropped a packet."
+        ],
+        snippet: "az network watcher test-ip-flow --direction Outbound --protocol TCP \\\n  --local 10.1.1.4:50000 --remote 10.2.1.4:443 --vm vm-app-01 -g rg-northstar-app",
+        examTrap: "Know Metric vs Log (KQL) vs Activity Log alerts, AND remember Alert Processing Rules suppress notifications during maintenance windows!"
+      },
+      backup: {
+        title: "Recovery Services Vault & Azure Backup Vault",
+        domain: "Monitor & Maintain Azure Resources (10–15%)",
+        week: "Week 7",
+        colorVar: "--chart-5",
+        msUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-monitor-backup-resources/",
+        msLabel: "MS Learn: Backup & Site Recovery Docs",
+        role: "Protects VMs & File Shares (Recovery Services Vault), Managed Disks & Blobs (Azure Backup Vault), Soft Delete ransomware defense, and Site Recovery (ASR) failover.",
+        connectsTo: ["compute", "storage"],
+        whyItConnects: [
+          "Recovery Services Vault handles VMs, Azure Files, and Azure Site Recovery (ASR). Azure Backup Vault handles Azure Blobs and Managed Disks!",
+          "Region rule: Azure Backup Vault/RSV must be in the SAME region as the protected resource. For ASR (DR), the RSV must be in the TARGET secondary region!",
+          "Soft delete protects backups for 14 days even after deletion."
+        ],
+        snippet: "az backup protection enable-for-vm -g rg-northstar-ops \\\n  --vault-name rsv-northstar --vm vm-app-01 --policy-name DefaultPolicy",
+        examTrap: "Backup = Vault in SAME region. Site Recovery (ASR) = Vault in TARGET region. Also know Recovery Services Vault (VMs/Files/ASR) vs Azure Backup Vault (Disks/Blobs)!"
+      }
+    };
+
+    const EDGES = [
+      ["entra", "governance"], ["entra", "compute"], ["entra", "storage"],
+      ["governance", "compute"], ["governance", "storage"],
+      ["ingress", "bastion"], ["ingress", "compute"],
+      ["bastion", "compute"], ["bastion", "storage"],
+      ["compute", "storage"], ["compute", "monitor"], ["compute", "backup"],
+      ["storage", "backup"], ["bastion", "monitor"], ["ingress", "monitor"]
+    ];
+
+    // =========================================================================
+    // DATA: 8-WEEK STORY-DRIVEN EPISODES + OFFICIAL MICROSOFT LINKS
+    // =========================================================================
+    const DOMAINS = [
+      { id: "identity", label: "Identity & Gov", weight: "20–25%", color: "var(--chart-1)" },
+      { id: "networking", label: "Virtual Networking", weight: "15–20%", color: "var(--chart-2)" },
+      { id: "storage", label: "Storage", weight: "15–20%", color: "var(--chart-4)" },
+      { id: "compute", label: "Compute", weight: "20–25%", color: "var(--chart-3)" },
+      { id: "monitor", label: "Monitor & Backup", weight: "10–15%", color: "var(--chart-5)" }
+    ];
+
+    const WEEKS = [
+      {
+        num: 1,
+        title: "Ep 1: Stop Marcus From Burning the Company Card",
+        domain: "identity",
+        weight: "20–25%",
+        msPathUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-identities-governance/",
+        msPathTitle: "MS Learn: Identities & Governance",
+        story: "SLACK ALERT (CTO): \"Welcome to Northstar! Marcus from Marketing just spun up an $800 GPU VM in Japan East and deleted a staging resource group. Lock this tenant down with RBAC, Policy, Locks, and a $10 budget before Friday.\"",
+        sprints: [
+          { id: "w1d1", day: "Mon", tag: "Blueprint", text: "Create Resource Groups (rg-northstar-core + rg-northstar-ephemeral), set a $10 Azure Cost Budget (50%/80% alerts), and create 2 Entra ID users + 1 security group + inspect SSPR & External Guest settings." },
+          { id: "w1d2", day: "Tue", tag: "Connect", text: "Assign Reader at RG scope and Contributor on one resource; check Effective Access + learn how Management Group → Sub → RG → Resource inheritance works." },
+          { id: "w1d3", day: "Wed", tag: "Incident", text: "Put a CanNotDelete lock on a test RG and try deleting it as Owner. Then put a ReadOnly lock on a Storage Account and watch what breaks when listing keys." },
+          { id: "w1d4", day: "Thu", tag: "IaC & Traps", text: "Assign built-in Azure Policy 'Allowed locations' (2 regions) + 'Require a tag on resources'. Inspect a Custom RBAC role JSON (`Actions`, `NotActions`, `DataActions`)." },
+          { id: "w1d5", day: "Fri", tag: "Boss + Clean", text: "Run a 10-question Identity Boss Fight + try 1 round of Tab 4's 60s Trap Speed Run. Verify $0 spend in Cost Analysis." }
+        ]
+      },
+      {
+        num: 2,
+        title: "Ep 2: Wire the Hub-and-Spoke Network Without Loops",
+        domain: "networking",
+        weight: "15–20%",
+        msPathUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-virtual-networks/",
+        msPathTitle: "MS Learn: Virtual Networks",
+        story: "SLACK ALERT (Dev Lead): \"Our app servers and database servers are sitting in one flat subnet with zero firewall rules. Split them into Hub, App, and Data VNets—and figure out why App still can't ping Data!\"",
+        sprints: [
+          { id: "w2d1", day: "Mon", tag: "Blueprint", text: "Build vnet-hub (10.0.0.0/16), vnet-app (10.1.0.0/16), and vnet-data (10.2.0.0/16) with clean subnets. Practice CIDR sizing (Azure reserves 5 IPs per subnet!)." },
+          { id: "w2d2", day: "Tue", tag: "Connect", text: "Peer Hub ↔ App and Hub ↔ Data. Deploy two tiny B1s Linux VMs in `rg-northstar-ephemeral` and prove firsthand that VNet peering is NON-TRANSITIVE." },
+          { id: "w2d3", day: "Wed", tag: "Incident", text: "Attach NSGs to BOTH the App Subnet and VM NIC with conflicting priorities (100 vs 200). Use Effective Security Rules to diagnose why traffic is still dropped." },
+          { id: "w2d4", day: "Thu", tag: "IaC & Traps", text: "Create Application Security Groups (asg-web, asg-db) to replace raw IPs in NSG rules. Add a custom Route Table (UDR) and trace longest-prefix-match routing." },
+          { id: "w2d5", day: "Fri", tag: "Boss + Clean", text: "10-question Networking Pt 1 Boss Fight + delete `rg-northstar-ephemeral` (VNets stay in `rg-northstar-core` for $0!)." }
+        ]
+      },
+      {
+        num: 3,
+        title: "Ep 3: Seal the Data Vault Off the Public Internet",
+        domain: "storage",
+        weight: "15–20%",
+        msPathUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-storage/",
+        msPathTitle: "MS Learn: Azure Storage",
+        story: "SLACK ALERT (Security): \"Compliance audit hit! Product images and finance files are exposed on public storage endpoints using shared keys. Lock public access off, wire a Private Endpoint, and automate archival tiers.\"",
+        sprints: [
+          { id: "w3d1", day: "Mon", tag: "Blueprint", text: "Create a StorageV2 account (LRS for cheap lab), blob container 'products', and Azure File Share 'finance' with Snapshots & Soft Delete. Upload files via AzCopy or Storage Explorer." },
+          { id: "w3d2", day: "Tue", tag: "Connect", text: "Disable Public Network Access. Compare Service Endpoints vs Private Endpoints: add a Private Endpoint in vnet-data + Private DNS Zone (`privatelink.blob.core.windows.net`) linked to vnet-app." },
+          { id: "w3d3", day: "Wed", tag: "Incident", text: "Create a Service SAS tied to a Stored Access Policy, then revoke the policy to instantly kill access. Test why 'Contributor' fails on Entra-auth blob reads (Data Plane trap!)." },
+          { id: "w3d4", day: "Thu", tag: "IaC & Traps", text: "Configure Blob Lifecycle Management (Hot → Cool → Archive) & Blob Versioning. Drill Object Replication prerequisites & LRS/ZRS/GRS/GZRS + Azure Files Entra auth." },
+          { id: "w3d5", day: "Fri", tag: "Boss + Clean", text: "10-question Storage Boss Fight + delete temporary Private Endpoint if idle over weekend (~$0.01/hr)." }
+        ]
+      },
+      {
+        num: 4,
+        title: "Ep 4: Automate Compute & Kill Hardcoded Secrets",
+        domain: "compute",
+        weight: "20–25%",
+        msPathUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-compute-resources/",
+        msPathTitle: "MS Learn: Azure Compute",
+        story: "SLACK ALERT (Ops): \"Stop hand-clicking VMs in the portal! Write a repeatable Bicep template, make our app servers auto-scale for promos, and let them talk to Storage with ZERO passwords.\"",
+        sprints: [
+          { id: "w4d1", day: "Mon", tag: "Blueprint", text: "Export an ARM template from a VM deployment, convert/write a clean Bicep file (`main.bicep`), modify a parameter (VM size), and deploy `vm-app-01` via CLI." },
+          { id: "w4d2", day: "Tue", tag: "Connect", text: "Turn on System-Assigned Managed Identity on `vm-app-01`, grant `Storage Blob Data Contributor`, and run `az login --identity` inside the VM to upload a blob passwordlessly." },
+          { id: "w4d3", day: "Wed", tag: "Incident", text: "Attach a Managed Data Disk, practice VM resize & moving across RGs/Subscriptions, and review Azure Disk Encryption prerequisites." },
+          { id: "w4d4", day: "Thu", tag: "IaC & Traps", text: "Deploy a VM Scale Set (VMSS) with CPU autoscale rules. Drill Availability Sets (Fault/Update domains) vs Availability Zones (99.99% SLA)." },
+          { id: "w4d5", day: "Fri", tag: "Boss + Clean", text: "10-question VMs & Bicep Boss Fight + delete `rg-northstar-ephemeral` (saves 95% of your Azure bill!)." }
+        ]
+      },
+      {
+        num: 5,
+        title: "Ep 5: Zero-Downtime Storefront & Containers",
+        domain: "compute",
+        weight: "20–25%",
+        msPathUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-compute-resources/",
+        msPathTitle: "MS Learn: App Service & Containers",
+        story: "SLACK ALERT (Product): \"Last Friday's deploy broke checkout for 40 minutes. Move the storefront to App Service with zero-downtime staging swaps, and spin up background workers in containers!\"",
+        sprints: [
+          { id: "w5d1", day: "Mon", tag: "Blueprint", text: "Provision an App Service Plan + Web App. Map out which tiers unlock Deployment Slots, Custom DNS + TLS certs, Autoscale, and App Service Backup." },
+          { id: "w5d2", day: "Tue", tag: "Connect", text: "Add a 'staging' Deployment Slot, configure a slot-sticky setting, swap to production, and inspect Regional VNet Integration for reaching Data Spoke." },
+          { id: "w5d3", day: "Wed", tag: "Incident", text: "Create an Azure Container Registry (ACR) + deploy an Azure Container Instance (ACI) with restart policies (`OnFailure`/`Always`/`Never`) and mounted Azure File Share." },
+          { id: "w5d4", day: "Thu", tag: "IaC & Traps", text: "Deploy a tiny container to Azure Container Apps (ACA) with HTTP ingress + scaling rules. Drill the ACI vs ACA vs App Service exam decision table." },
+          { id: "w5d5", day: "Fri", tag: "Boss + Clean", text: "10-question App Service & Containers Boss Fight + delete paid plans/ACR/containers in `rg-northstar-ephemeral`." }
+        ]
+      },
+      {
+        num: 6,
+        title: "Ep 6: Traffic Control & Zero Public IPs on VMs",
+        domain: "networking",
+        weight: "15–20%",
+        msPathUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-virtual-networks/",
+        msPathTitle: "MS Learn: Load Balancing & DNS",
+        story: "SLACK ALERT (SecOps): \"A port scanner just hammered our VM public IP! Strip every Public IP off our VMs, put a Standard Load Balancer in front, and set up Azure Bastion for browser-only admin access.\"",
+        sprints: [
+          { id: "w6d1", day: "Mon", tag: "Blueprint", text: "Deploy a Standard Public Load Balancer (backend pool, HTTP health probe, LB rule) in front of 2 tiny nginx VMs showing their hostname." },
+          { id: "w6d2", day: "Tue", tag: "Connect", text: "Stop nginx on VM1 and verify LB shifts 100% traffic to VM2. Compare Public vs Internal Load Balancer and outbound SNAT rules." },
+          { id: "w6d3", day: "Wed", tag: "Incident", text: "Remove VM Public IPs. Deploy Azure Bastion in `AzureBastionSubnet` (/26) to connect via browser. Deliberately block `AzureLoadBalancer` in NSG and fix the dead health probe." },
+          { id: "w6d4", day: "Thu", tag: "IaC & Traps", text: "Configure Public DNS vs Private DNS Zone (`northstar.internal`) with VNet auto-registration. Practice troubleshooting broken LB health probes." },
+          { id: "w6d5", day: "Fri", tag: "Boss + Clean", text: "10-question Networking Pt 2 Boss Fight. IMMEDIATELY delete Bastion & Standard LB (`rg-northstar-ephemeral`) — Bastion costs ~$0.19/hr!" }
+        ]
+      },
+      {
+        num: 7,
+        title: "Ep 7: Catch Outages in 30 Seconds & Survive a Region Failure",
+        domain: "monitor",
+        weight: "10–15%",
+        msPathUrl: "https://learn.microsoft.com/en-us/training/paths/az-104-monitor-backup-resources/",
+        msPathTitle: "MS Learn: Monitor & Back Up",
+        story: "SLACK ALERT (VP of Eng): \"An outage lasted 2 hours last night because nobody got paged—and someone deleted a file share! Set up Monitor Insights, smart Alert Processing Rules, Network Watcher, and Backup Vaults.\"",
+        sprints: [
+          { id: "w7d1", day: "Mon", tag: "Blueprint", text: "Create a Log Analytics Workspace, enable Diagnostic Settings + Azure Monitor Insights (VM/Storage/Network), and run 3 basic KQL queries." },
+          { id: "w7d2", day: "Tue", tag: "Connect", text: "Create an Action Group (email), a Metric Alert (CPU > 80%), an Activity Log Alert (Lock deleted), and an Alert Processing Rule to suppress alerts during a maintenance window." },
+          { id: "w7d3", day: "Wed", tag: "Incident", text: "Use Network Watcher (IP Flow Verify, Next Hop, Connection Monitor) to catch a deliberately planted UDR blackhole and NSG deny rule." },
+          { id: "w7d4", day: "Thu", tag: "IaC & Traps", text: "Compare Recovery Services Vault (VMs/Files/ASR) vs Azure Backup Vault (Blobs/Disks). Configure a VM Backup Policy + drill ASR secondary-region failover rules." },
+          { id: "w7d5", day: "Fri", tag: "Boss + Clean", text: "10-question Monitor & Backup Boss Fight. Stop backup + disable Soft Delete on lab vault before deleting `rg-northstar-ephemeral`." }
+        ]
+      },
+      {
+        num: 8,
+        title: "Ep 8: Final Boss — P1 War Room & Open-Book Exam Mastery",
+        domain: "compute",
+        weight: "All 5 Domains",
+        msPathUrl: "https://learn.microsoft.com/en-us/credentials/certifications/azure-administrator/",
+        msPathTitle: "MS Learn: Practice Assessment & Exam",
+        story: "SLACK ALERT (Board): \"Black Friday simulation! Combine all 5 domains under exam pressure, train 45-second Microsoft Learn open-book lookups, and crush Microsoft's new AI Skills Navigator Practice Assessment.\"",
+        sprints: [
+          { id: "w8d1", day: "Mon", tag: "Blueprint", text: "Post-Jan Blueprint Check: verify Study Guide Change Log, then run Full-Stack P1 Case Study #1 with AI tutor (RBAC + Peering + Private Endpoint + App Service)." },
+          { id: "w8d2", day: "Tue", tag: "Connect", text: "Open-Book Scavenger Hunt: practice finding 5 tricky tables on Microsoft Learn (App Service tiers, Storage redundancy, RBAC matrix, Backup Vaults) in < 45 sec each." },
+          { id: "w8d3", day: "Wed", tag: "Incident", text: "Take Microsoft's NEW official AZ-104 Practice Assessment on AI Skills Navigator (linked on the AZ-104 certification page) + try the official Exam Sandbox UI." },
+          { id: "w8d4", day: "Thu", tag: "IaC & Traps", text: "Targeted Gap Repair: build a 1-page personal trap sheet for every question you missed + hit 10+ score in Tab 4's 60s Trap Speed Run." },
+          { id: "w8d5", day: "Fri", tag: "Boss + Clean", text: "Full timed mock (100 min pace) targeting 80%+. Tear down all Northstar lab resource groups & book your AZ-104 exam!" }
+        ]
+      }
+    ];
+
+    // =========================================================================
+    // DATA: 6 LIVE INCIDENT TICKETS (WITH OFFICIAL MS DOC LINKS)
+    // =========================================================================
+    const TICKETS = [
+      {
+        id: "t1", code: "INC-101", domain: "Identity & Governance", severity: "P1",
+        title: "Owner Can't Delete a Test Storage Account",
+        msUrl: "https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources",
+        symptom: "Alex has the 'Owner' role on Subscription-Prod. She is trying to delete an old staging Storage Account inside rg-northstar-data, but Azure rejects it with `ScopeLocked`. She checks Azure Policy and sees no Deny policies.",
+        question: "What is blocking Alex, and what is the exact minimum action needed to delete it?",
+        options: [
+          "Her Owner role is inherited from Management Group; re-assign Owner directly on the Storage Account.",
+          "A CanNotDelete (or ReadOnly) Resource Lock exists on the Storage Account, RG, or Subscription. She must remove the lock first, then delete the resource.",
+          "Entra ID PIM expired her session; she needs 'Storage Account Contributor' in addition to Owner.",
+          "Soft Delete is enabled on Blob containers, which triggers the `ScopeLocked` ARM error."
+        ],
+        answer: 1,
+        explanation: "Resource Locks override RBAC — even a Subscription Owner cannot delete a locked resource! Only an Owner or User Access Administrator can remove the lock first, and THEN delete the resource."
+      },
+      {
+        id: "t2", code: "INC-102", domain: "Virtual Networking", severity: "P1",
+        title: "App VM Can't Reach Data Spoke Through Hub",
+        msUrl: "https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-peering-overview",
+        symptom: "Northstar peered vnet-app ↔ vnet-hub (Connected) and vnet-data ↔ vnet-hub (Connected). Neither spoke has NSGs yet. From vm-app-01 (10.1.1.4), every packet to vm-data-01 (10.2.1.4) times out.",
+        question: "Why is traffic failing between vnet-app and vnet-data?",
+        options: [
+          "VNet Peering only supports IPv6 unless Gateway Transit is enabled.",
+          "Azure VNet Peering is NON-TRANSITIVE. Peering both spokes to the hub does not route spoke-to-spoke traffic unless you either peer App ↔ Data directly OR route via a Hub NVA/Firewall using UDRs.",
+          "You forgot to enable 'Allow Forwarded Traffic' on the Storage Account.",
+          "Subnets in 10.1.0.0/16 and 10.2.0.0/16 overlap in RFC1918 space."
+        ],
+        answer: 1,
+        explanation: "One of the #1 AZ-104 traps: VNet peering is strictly non-transitive! A↔B and B↔C NEVER implies A↔C. Add direct spoke peering OR route through a Hub firewall/NVA with User-Defined Routes (UDRs)."
+      },
+      {
+        id: "t3", code: "INC-103", domain: "Storage + Networking", severity: "P1",
+        title: "403 Forbidden After Adding a Private Endpoint",
+        msUrl: "https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns",
+        symptom: "You disabled Public Network Access on stnorthstar01 and created a Private Endpoint (10.2.1.10) in vnet-data (peered to vnet-app). From vm-app-01, `nslookup stnorthstar01.blob.core.windows.net` still returns a public IP `52.239.x.x` and returns 403.",
+        question: "What missing link connects vnet-app to the Private Endpoint?",
+        options: [
+          "You must open TCP port 445 outbound on the App Subnet NSG.",
+          "You need a Private DNS Zone (`privatelink.blob.core.windows.net`) with an A record for stnorthstar01 AND a Virtual Network Link attaching that Private DNS Zone to vnet-app.",
+          "You must enable 'Allow Azure services on the trusted services list' so public DNS resolves private IPs.",
+          "Private Endpoints cannot be accessed across peered VNets."
+        ],
+        answer: 1,
+        explanation: "Classic cross-domain glue! A Private Endpoint gives Storage a private IP, but your VM only uses it when a Private DNS Zone linked to vnet-app resolves the hostname to `10.2.1.10` instead of the public IP."
+      },
+      {
+        id: "t4", code: "INC-104", domain: "Compute + Identity + Storage", severity: "P2",
+        title: "Managed Identity Has 'Contributor' But Can't Read Blobs",
+        msUrl: "https://learn.microsoft.com/en-us/azure/storage/blobs/assign-azure-role-data-access",
+        symptom: "You enabled System-Assigned Managed Identity on vm-app-01 and assigned it the built-in `Contributor` role on stnorthstar01. Inside the VM, your script authenticates via Entra ID to download a blob and fails with `AuthorizationPermissionMismatch`.",
+        question: "Why did `Contributor` fail?",
+        options: [
+          "Managed Identities can only authenticate to Key Vault, not Storage.",
+          "`Contributor` is a Control Plane role (managing the account itself). Reading/writing blobs via Entra ID requires a Data Plane role like `Storage Blob Data Reader` or `Storage Blob Data Contributor`.",
+          "You must use a User-Assigned Managed Identity for Blob Storage.",
+          "You need to rotate Storage Account Access Key 1 after assigning RBAC."
+        ],
+        answer: 1,
+        explanation: "AZ-104 loves Control Plane vs Data Plane! Even `Owner` and `Contributor` do NOT grant Entra ID data-plane access to blobs or queues — assign `Storage Blob Data Reader` or `Storage Blob Data Contributor`."
+      },
+      {
+        id: "t5", code: "INC-105", domain: "Networking + Compute", severity: "P1",
+        title: "Load Balancer Shows Backend Pool 0% Healthy",
+        msUrl: "https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-custom-probe-overview",
+        symptom: "You placed a Standard Public Load Balancer in front of 2 healthy nginx VMs on TCP 80. You added an NSG rule allowing TCP 80 from 10.1.0.0/16 (Priority 100) and a custom `DenyAllInbound` rule (Priority 200). Now the LB marks all backends unhealthy.",
+        question: "What caused the health probe to fail?",
+        options: [
+          "Standard Load Balancer health probes require HTTPS on port 443.",
+          "Your custom Priority 200 DenyAll rule overrides the default `AllowAzureLoadBalancerInBound` rule (Priority 65001). Allow the `AzureLoadBalancer` service tag at a priority < 200.",
+          "Load Balancers only work with Basic Public IPs.",
+          "You must install the Azure Monitor Agent on both VMs for probes to respond."
+        ],
+        answer: 1,
+        explanation: "NSG rules run from lowest priority number (100) to highest (65500). Default rules sit at 65000+. A custom DenyAll at 200 blocks the `AzureLoadBalancer` probe tag (168.63.129.16)!"
+      },
+      {
+        id: "t6", code: "INC-106", domain: "Monitor & Backup", severity: "P2",
+        title: "Can't See Production VM When Configuring Azure Backup",
+        msUrl: "https://learn.microsoft.com/en-us/azure/backup/backup-azure-vms-first-look-arm",
+        symptom: "Production VM vm-app-01 runs in East US. You created Recovery Services Vault rsv-northstar-dr in West US 2 thinking backups belong in another region. Inside the vault, vm-app-01 does not appear under `+ Backup`.",
+        question: "Why is vm-app-01 missing from the vault?",
+        options: [
+          "VMs must be deallocated before enrolling in Azure Backup.",
+          "For Azure Backup, the Recovery Services Vault MUST be in the SAME region as the VM (GRS vault redundancy copies it cross-region). Putting the vault in the target region is for Azure Site Recovery (ASR)!",
+          "Only Windows VMs support Recovery Services Vaults.",
+          "You must use an Azure Backup Vault instead of a Recovery Services Vault for VMs."
+        ],
+        answer: 1,
+        explanation: "Memorize this contrast: Azure BACKUP = Vault in the SAME region as the VM. Azure SITE RECOVERY (ASR) = Vault in the TARGET secondary region. (And Azure Backup Vault is for Disks/Blobs, while RSV is for VMs/Files/ASR!)"
+      }
+    ];
+
+    // =========================================================================
+    // DATA: 60-SECOND EXAM TRAP SPEED RUN (14 REAL MICROSOFT TRAPS)
+    // =========================================================================
+    const SPEEDRUN_CARDS = [
+      { prompt: "A Subscription Owner tries to delete a Resource Group that has a CanNotDelete lock. Does it succeed?", choices: ["Yes — Owner overrides locks", "No — Lock blocks even Owner"], answer: 1, why: "Locks override ALL RBAC roles. Owner must delete the lock first.", url: "https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources" },
+      { prompt: "VNet A is peered to Hub, and Hub is peered to VNet B. Can VMs in VNet A ping VNet B by default?", choices: ["Yes — Peering is transitive", "No — Peering is non-transitive"], answer: 1, why: "VNet peering is NEVER transitive without direct peering or a Hub NVA/Firewall + UDRs.", url: "https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-peering-overview" },
+      { prompt: "How many IP addresses does Azure reserve inside every subnet?", choices: ["2 IPs (network + broadcast)", "5 IPs (first 4 + last 1)"], answer: 1, why: "Azure reserves 5 IPs per subnet (.0, .1, .2, .3, and broadcast).", url: "https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-faq" },
+      { prompt: "You want to download a Blob that is currently in the Archive tier. What must you do first?", choices: ["Download directly (slower speed)", "Rehydrate it to Hot or Cool first"], answer: 1, why: "Archive tier is OFFLINE storage — blobs cannot be read until rehydrated.", url: "https://learn.microsoft.com/en-us/azure/storage/blobs/archive-rehydrate-overview" },
+      { prompt: "Which vault do you create to back up Azure Virtual Machines and Azure File Shares?", choices: ["Recovery Services Vault", "Azure Backup Vault"], answer: 0, why: "Recovery Services Vault = VMs, Azure Files, ASR. Azure Backup Vault = Blobs, Managed Disks, PostgreSQL.", url: "https://learn.microsoft.com/en-us/azure/backup/backup-overview" },
+      { prompt: "An app VM has 'Contributor' RBAC on a Storage Account. Can it read blobs via Entra ID (no keys)?", choices: ["Yes — Contributor does everything", "No — Needs a Data Plane role"], answer: 1, why: "Contributor is Control Plane only. Assign Storage Blob Data Reader/Contributor for Data Plane.", url: "https://learn.microsoft.com/en-us/azure/storage/blobs/assign-azure-role-data-access" },
+      { prompt: "What MUST the Azure Bastion subnet be named?", choices: ["BastionSubnet (/27 min)", "AzureBastionSubnet (/26 min)"], answer: 1, why: "Exact name `AzureBastionSubnet` with a minimum prefix of `/26`.", url: "https://learn.microsoft.com/en-us/azure/bastion/configuration-settings" },
+      { prompt: "You want to revoke a Service SAS token early WITHOUT rotating the Storage Account keys. What do you use?", choices: ["Stored Access Policy", "Private Endpoint"], answer: 0, why: "Tie the Service SAS to a Stored Access Policy so you can modify/revoke it anytime.", url: "https://learn.microsoft.com/en-us/rest/api/storageservices/define-stored-access-policy" },
+      { prompt: "Which App Service Plan tier is the MINIMUM required for Deployment Slots?", choices: ["Basic (B1)", "Standard (S1)"], answer: 1, why: "Deployment slots require Standard (S1), Premium, or Isolated plans.", url: "https://learn.microsoft.com/en-us/azure/app-service/deploy-staging-slots" },
+      { prompt: "You want to silence Azure Monitor alert emails every Sunday 2–4 AM for patching without editing 20 alert rules.", choices: ["Alert Processing Rule", "Diagnostic Setting"], answer: 0, why: "Alert Processing Rules suppress notifications during planned maintenance schedules.", url: "https://learn.microsoft.com/en-us/azure/azure-monitor/alerts/alerts-processing-rules" },
+      { prompt: "Which NSG rules must inbound traffic pass to reach a VM?", choices: ["Either Subnet NSG OR NIC NSG", "BOTH Subnet NSG AND NIC NSG"], answer: 1, why: "Inbound evaluates Subnet NSG first, then NIC NSG. Both must allow the packet!", url: "https://learn.microsoft.com/en-us/azure/virtual-network/network-security-groups-overview" },
+      { prompt: "You are configuring Azure Site Recovery (ASR) for an East US VM to fail over to West US. Where does the RSV go?", choices: ["East US (source region)", "West US (target region)"], answer: 1, why: "Backup = Same region. Site Recovery (ASR) = Target secondary region!", url: "https://learn.microsoft.com/en-us/azure/site-recovery/azure-to-azure-architecture" },
+      { prompt: "A ReadOnly lock is placed on a Storage Account. Can an admin list its Storage Account Access Keys?", choices: ["Yes — Listing keys is read-only", "No — listKeys is a POST action"], answer: 1, why: "Classic exam gotcha! Listing storage keys is a POST operation, so ReadOnly locks block it.", url: "https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources" },
+      { prompt: "During the real AZ-104 exam, can you open Microsoft Learn documentation to check a SKU table?", choices: ["Yes — Open-book Learn (no extra time)", "No — Closed-book only"], answer: 0, why: "Role-based Microsoft exams include built-in Microsoft Learn access — practice fast lookups!", url: "https://learn.microsoft.com/en-us/credentials/support/exam-duration-exam-experience" }
+    ];
+
+    // =========================================================================
+    // STATE, XP & RANK ENGINE
+    // =========================================================================
+    const STORAGE_KEY = "az104_northstar_quest_v2";
+    let state = {
+      selectedNode: "compute",
+      checked: {},
+      solvedTickets: {},
+      activeTicket: "t1",
+      openWeeks: { 1: true },
+      bestSpeedRun: 0,
+      blueprintChecked: {}
+    };
+
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || localStorage.getItem("az104_northstar_quest_v1") || "null");
+      if (saved && typeof saved === "object") state = { ...state, ...saved };
+    } catch (_) {}
+
+    function saveState() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+    }
+
+    const RANKS = [
+      { min: 0, name: "Rank 1: Day-One Intern" },
+      { min: 200, name: "Rank 2: Junior Cloud Admin" },
+      { min: 500, name: "Rank 3: Northstar Ops Engineer" },
+      { min: 900, name: "Rank 4: Senior Azure SRE" },
+      { min: 1300, name: "Rank 5: AZ-104 Exam Boss" }
+    ];
+
+    function updateXPAndRank() {
+      const sprintDone = Object.values(state.checked).filter(Boolean).length;
+      const ticketsDone = Object.values(state.solvedTickets).filter(Boolean).length;
+      const xp = sprintDone * 25 + ticketsDone * 50 + (state.bestSpeedRun || 0) * 15;
+
+      let currentRank = RANKS[0];
+      let nextRank = RANKS[1];
+      for (let i = 0; i < RANKS.length; i++) {
+        if (xp >= RANKS[i].min) {
+          currentRank = RANKS[i];
+          nextRank = RANKS[i + 1] || null;
+        }
+      }
+
+      document.getElementById("xp-display").textContent = xp;
+      document.getElementById("total-done").textContent = sprintDone;
+      document.getElementById("rank-pill").textContent = currentRank.name;
+      document.getElementById("best-badge").textContent = `Best: ${state.bestSpeedRun || 0}`;
+
+      if (nextRank) {
+        const pct = Math.min(100, Math.round(((xp - currentRank.min) / (nextRank.min - currentRank.min)) * 100));
+        document.getElementById("xp-bar").style.width = `${pct}%`;
+        document.getElementById("next-rank-label").textContent = `Next: ${nextRank.name.split(": ")[1]} (${nextRank.min} XP)`;
+      } else {
+        document.getElementById("xp-bar").style.width = "100%";
+        document.getElementById("next-rank-label").textContent = "Max Rank Unlocked — Ready for AZ-104!";
+      }
+    }
+
+    // =========================================================================
+    // TAB NAVIGATION
+    // =========================================================================
+    const tabBtns = document.querySelectorAll(".tab-btn");
+    const tabPanels = document.querySelectorAll(".tab-panel");
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const target = btn.dataset.tab;
+        tabBtns.forEach(b => {
+          b.classList.toggle("tab-active", b === btn);
+          b.classList.toggle("tab-inactive", b !== btn);
+        });
+        tabPanels.forEach(p => p.classList.toggle("hidden", p.id !== "tab-" + target));
+        if (target === "map") requestAnimationFrame(drawConnections);
+      });
+    });
+
+    // =========================================================================
+    // TAB 1: ARCHITECTURE MAP
+    // =========================================================================
+    function renderMapSelection() {
+      const sel = state.selectedNode;
+      const node = NODES[sel];
+      const connectedSet = new Set([sel, ...node.connectsTo]);
+
+      document.querySelectorAll("[data-node]").forEach(el => {
+        const id = el.dataset.node;
+        el.classList.remove("node-selected", "node-connected", "node-dimmed");
+        if (id === sel) el.classList.add("node-selected");
+        else if (connectedSet.has(id)) el.classList.add("node-connected");
+        else el.classList.add("node-dimmed");
+      });
+
+      const inspector = document.getElementById("node-inspector");
+      const connBadges = node.connectsTo.map(cid => `
+        <button data-jump="${cid}" class="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90 cursor-pointer">
+          ↔ ${NODES[cid].title.split(":")[0].split(",")[0]}
+        </button>
+      `).join("");
+
+      inspector.innerHTML = `
+        <div class="space-y-1.5 border-b border-[var(--card-border)] pb-3">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <span class="text-xs font-bold uppercase tracking-wide" style="color: var(${node.colorVar});">${node.domain}</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-[var(--secondary)] text-[var(--secondary-foreground)] font-medium">${node.week}</span>
+          </div>
+          <h3 class="text-lg font-bold">${node.title}</h3>
+          <p class="text-sm text-[var(--muted-foreground)]">${node.role}</p>
+          <a href="${node.msUrl}" target="_blank" rel="noopener" class="inline-block text-xs font-semibold text-[var(--link)] hover:underline pt-0.5">↗ ${node.msLabel}</a>
+        </div>
+
+        <div class="space-y-2">
+          <div class="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">How It Connects to Other Domains</div>
+          <ul class="space-y-2 text-sm">
+            ${node.whyItConnects.map(line => `
+              <li class="flex items-start gap-2">
+                <span class="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style="background: var(${node.colorVar});"></span>
+                <span>${line}</span>
+              </li>
+            `).join("")}
+          </ul>
+        </div>
+
+        <div class="space-y-1.5">
+          <div class="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Jump to Connected Pieces</div>
+          <div class="flex flex-wrap gap-1.5">${connBadges}</div>
+        </div>
+
+        <div class="space-y-1.5">
+          <div class="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Hands-On CLI / Bicep Preview</div>
+          <pre class="bg-[var(--content)] border border-[var(--card-border)] rounded-lg p-3 text-xs font-mono overflow-x-auto text-[var(--code-foreground)]">${node.snippet}</pre>
+        </div>
+
+        <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-lg p-3 space-y-1">
+          <div class="text-xs font-bold" style="color: var(--warning);">Classic AZ-104 Exam Trap</div>
+          <p class="text-xs text-[var(--foreground)] leading-relaxed">${node.examTrap}</p>
+        </div>
+      `;
+
+      inspector.querySelectorAll("[data-jump]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.selectedNode = btn.dataset.jump;
+          saveState();
+          renderMapSelection();
+        });
+      });
+
+      drawConnections();
+    }
+
+    function drawConnections() {
+      const stage = document.getElementById("arch-stage");
+      const svg = document.getElementById("arch-svg");
+      if (!stage || !svg) return;
+      const stageRect = stage.getBoundingClientRect();
+      if (stageRect.width === 0) return;
+
+      svg.setAttribute("viewBox", `0 0 ${stageRect.width} ${stageRect.height}`);
+      const sel = state.selectedNode;
+
+      const centers = {};
+      stage.querySelectorAll("[data-node]").forEach(el => {
+        const r = el.getBoundingClientRect();
+        centers[el.dataset.node] = { x: r.left - stageRect.left + r.width / 2, y: r.top - stageRect.top + r.height / 2 };
+      });
+
+      let paths = "";
+      EDGES.forEach(([a, b]) => {
+        const p1 = centers[a], p2 = centers[b];
+        if (!p1 || !p2) return;
+        const active = a === sel || b === sel;
+        paths += `<line class="conn-line" x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${active ? "var(--primary)" : "var(--border)"}" stroke-width="${active ? 2.5 : 1}" stroke-opacity="${active ? 0.85 : 0.35}" ${active ? "" : 'stroke-dasharray="4 4"'} />`;
+      });
+      svg.innerHTML = paths;
+    }
+
+    document.querySelectorAll("[data-node]").forEach(el => {
+      el.addEventListener("click", () => {
+        state.selectedNode = el.dataset.node;
+        saveState();
+        renderMapSelection();
+      });
+    });
+    window.addEventListener("resize", drawConnections);
+
+    // =========================================================================
+    // TAB 2: 8-WEEK EPISODES
+    // =========================================================================
+    function renderSprints() {
+      const container = document.getElementById("weeks-container");
+      const domainBars = document.getElementById("domain-bars");
+
+      const domainTotals = {}, domainDone = {};
+      DOMAINS.forEach(d => { domainTotals[d.id] = 0; domainDone[d.id] = 0; });
+
+      WEEKS.forEach(w => {
+        w.sprints.forEach(s => {
+          domainTotals[w.domain] = (domainTotals[w.domain] || 0) + 1;
+          if (state.checked[s.id]) domainDone[w.domain] = (domainDone[w.domain] || 0) + 1;
+        });
+      });
+
+      domainBars.innerHTML = DOMAINS.map(d => {
+        const tot = domainTotals[d.id] || 1, done = domainDone[d.id] || 0;
+        const pct = Math.round((done / tot) * 100);
+        return `
+          <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-lg p-3 space-y-1.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-semibold">${d.label}</span>
+              <span class="font-mono text-[var(--muted-foreground)]">${d.weight}</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-[var(--secondary)] overflow-hidden">
+              <div class="h-full rounded-full transition-all" style="width: ${pct}%; background: ${d.color};"></div>
+            </div>
+            <div class="text-xs text-[var(--muted-foreground)] font-mono">${done}/${tot} sprints</div>
+          </div>
+        `;
+      }).join("");
+
+      container.innerHTML = WEEKS.map(w => {
+        const doneInWeek = w.sprints.filter(s => state.checked[s.id]).length;
+        const isOpen = !!state.openWeeks[w.num];
+        return `
+          <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
+            <button data-week-toggle="${w.num}" class="w-full px-4 py-3.5 flex items-center justify-between gap-3 text-left cursor-pointer hover:bg-[var(--content)] transition-colors">
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 bg-[var(--secondary)] text-[var(--secondary-foreground)]">W${w.num}</span>
+                <div class="min-w-0">
+                  <div class="text-sm font-bold truncate">${w.title}</div>
+                  <div class="text-xs text-[var(--muted-foreground)] truncate">${w.msPathTitle} • ${w.weight}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 shrink-0">
+                <span class="text-xs font-mono font-bold ${doneInWeek === 5 ? "text-[var(--success)]" : "text-[var(--muted-foreground)]"}">${doneInWeek}/5</span>
+                <span class="text-xs text-[var(--muted-foreground)]">${isOpen ? "▲" : "▼"}</span>
+              </div>
+            </button>
+            <div class="${isOpen ? "" : "hidden"} border-t border-[var(--card-border)]">
+              <div class="px-4 py-3 bg-[var(--content)] border-b border-[var(--card-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <p class="text-xs text-[var(--foreground)] leading-relaxed">${w.story}</p>
+                <a href="${w.msPathUrl}" target="_blank" rel="noopener" class="text-xs font-semibold text-[var(--link)] hover:underline shrink-0">↗ Official MS Path</a>
+              </div>
+              <div class="divide-y divide-[var(--card-border)]">
+                ${w.sprints.map(s => {
+                  const isChecked = !!state.checked[s.id];
+                  return `
+                    <label class="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-[var(--content)] transition-colors">
+                      <input type="checkbox" data-sprint="${s.id}" ${isChecked ? "checked" : ""} class="mt-1 w-4 h-4 accent-[var(--primary)] cursor-pointer shrink-0" />
+                      <div class="space-y-0.5 text-sm">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="font-mono text-xs font-bold text-[var(--muted-foreground)]">${s.day}</span>
+                          <span class="text-xs font-semibold px-2 py-0.5 rounded bg-[var(--secondary)] text-[var(--secondary-foreground)]">${s.tag}</span>
+                        </div>
+                        <p class="${isChecked ? "line-through text-[var(--muted-foreground)]" : "text-[var(--foreground)]"} text-xs sm:text-sm leading-relaxed">${s.text}</p>
+                      </div>
+                    </label>
+                  `;
+                }).join("")}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      container.querySelectorAll("[data-week-toggle]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const n = Number(btn.dataset.weekToggle);
+          state.openWeeks[n] = !state.openWeeks[n];
+          saveState();
+          renderSprints();
+        });
+      });
+
+      container.querySelectorAll("[data-sprint]").forEach(cb => {
+        cb.addEventListener("change", () => {
+          state.checked[cb.dataset.sprint] = cb.checked;
+          saveState();
+          renderSprints();
+          updateXPAndRank();
+        });
+      });
+
+      updateXPAndRank();
+    }
+
+    document.getElementById("reset-progress").addEventListener("click", () => {
+      state.checked = {};
+      saveState();
+      renderSprints();
+    });
+
+    // =========================================================================
+    // TAB 3: P1 INCIDENT QUEUE
+    // =========================================================================
+    let selectedOptionForCurrent = null;
+
+    function renderIncidents() {
+      const pills = document.getElementById("ticket-pills");
+      const view = document.getElementById("ticket-view");
+      const solvedCount = Object.values(state.solvedTickets).filter(Boolean).length;
+
+      document.getElementById("inc-score").textContent = solvedCount;
+      document.getElementById("incident-badge").textContent = `${solvedCount}/${TICKETS.length}`;
+
+      pills.innerHTML = TICKETS.map(t => {
+        const active = t.id === state.activeTicket;
+        const solved = !!state.solvedTickets[t.id];
+        return `
+          <button data-ticket="${t.id}" class="px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-colors ${
+            active
+              ? "bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]"
+              : "bg-[var(--content)] text-[var(--foreground)] border-[var(--card-border)] hover:bg-[var(--secondary)]"
+          }">
+            ${solved ? "✓ " : ""}${t.code}: ${t.domain}
+          </button>
+        `;
+      }).join("");
+
+      pills.querySelectorAll("[data-ticket]").forEach(b => {
+        b.addEventListener("click", () => {
+          state.activeTicket = b.dataset.ticket;
+          selectedOptionForCurrent = state.solvedTickets[state.activeTicket] ? TICKETS.find(x => x.id === state.activeTicket).answer : null;
+          saveState();
+          renderIncidents();
+        });
+      });
+
+      const t = TICKETS.find(x => x.id === state.activeTicket) || TICKETS[0];
+      const alreadySolved = !!state.solvedTickets[t.id];
+      const chosen = selectedOptionForCurrent !== null ? selectedOptionForCurrent : (alreadySolved ? t.answer : null);
+
+      view.innerHTML = `
+        <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-xl p-4 space-y-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold" style="background: var(--error); color: var(--primary-foreground);">${t.severity}</span>
+            <span class="text-xs font-mono text-[var(--muted-foreground)]">${t.code}</span>
+            <span class="text-xs font-semibold text-[var(--muted-foreground)]">• ${t.domain}</span>
+          </div>
+          <h3 class="text-base font-bold">${t.title}</h3>
+          <p class="text-sm text-[var(--foreground)] leading-relaxed">${t.symptom}</p>
+        </div>
+
+        <div class="space-y-2">
+          <div class="text-sm font-semibold">${t.question}</div>
+          <div class="space-y-2">
+            ${t.options.map((opt, idx) => {
+              let borderStyle = "border-[var(--border)] bg-[var(--card)] hover:bg-[var(--content)]";
+              let tag = "";
+              if (chosen !== null) {
+                if (idx === t.answer) {
+                  borderStyle = "border-[var(--success)] bg-[var(--content)]";
+                  tag = `<span class="text-xs font-bold shrink-0" style="color: var(--success);">Correct Fix (+50 XP)</span>`;
+                } else if (idx === chosen && idx !== t.answer) {
+                  borderStyle = "border-[var(--error)] bg-[var(--content)]";
+                  tag = `<span class="text-xs font-bold shrink-0" style="color: var(--error);">Not quite</span>`;
+                }
+              }
+              return `
+                <button data-opt="${idx}" class="w-full text-left p-3.5 rounded-lg border ${borderStyle} flex items-start justify-between gap-3 cursor-pointer transition-colors">
+                  <span class="text-sm leading-relaxed"><span class="font-mono font-bold mr-2 text-[var(--muted-foreground)]">${String.fromCharCode(65 + idx)}.</span>${opt}</span>
+                  ${tag}
+                </button>
+              `;
+            }).join("")}
+          </div>
+        </div>
+
+        ${chosen !== null ? `
+          <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="text-xs font-bold uppercase tracking-wider" style="color: ${chosen === t.answer ? "var(--success)" : "var(--warning)"};">
+                ${chosen === t.answer ? "Incident Resolved — Why Everything Connects" : "Post-Mortem Breakdown"}
+              </div>
+              <a href="${t.msUrl}" target="_blank" rel="noopener" class="text-xs font-semibold text-[var(--link)] hover:underline">↗ Verify in Official MS Docs</a>
+            </div>
+            <p class="text-sm leading-relaxed">${t.explanation}</p>
+          </div>
+        ` : ""}
+      `;
+
+      view.querySelectorAll("[data-opt]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const idx = Number(btn.dataset.opt);
+          selectedOptionForCurrent = idx;
+          if (idx === t.answer) {
+            state.solvedTickets[t.id] = true;
+            saveState();
+            updateXPAndRank();
+          }
+          renderIncidents();
+        });
+      });
+    }
+
+    // =========================================================================
+    // TAB 4: 60-SECOND EXAM TRAP SPEED RUN
+    // =========================================================================
+    let srRunning = false;
+    let srTimeLeft = 60;
+    let srScore = 0;
+    let srStreak = 0;
+    let srDeck = [];
+    let srIndex = 0;
+    let srTimer = null;
+    let srLastFeedback = null;
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function updateSRHud() {
+      document.getElementById("sr-time").textContent = `${srTimeLeft}s`;
+      document.getElementById("sr-score").textContent = srScore;
+      document.getElementById("sr-streak").textContent = `${srStreak}🔥`;
+    }
+
+    function renderSpeedRun() {
+      const stage = document.getElementById("sr-stage");
+      updateSRHud();
+
+      if (!srRunning && srTimeLeft === 60) {
+        stage.innerHTML = `
+          <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-xl p-6 text-center space-y-3">
+            <div class="text-lg font-bold">Ready to Defuse 14 Classic AZ-104 Traps?</div>
+            <p class="text-sm text-[var(--muted-foreground)] max-w-lg mx-auto">You have 60 seconds. Every correct call adds to your combo streak; wrong answers show the exact Microsoft rule so you never fall for it on exam day.</p>
+            <div class="text-xs font-mono text-[var(--muted-foreground)]">Your Personal Best: <strong>${state.bestSpeedRun || 0}</strong></div>
+            <button id="sr-start-btn" class="px-5 py-2.5 rounded-lg text-sm font-bold bg-[var(--primary)] text-[var(--primary-foreground)] cursor-pointer">Start 60-Second Run</button>
+          </div>
+        `;
+        document.getElementById("sr-start-btn").addEventListener("click", startSpeedRun);
+        return;
+      }
+
+      if (!srRunning) {
+        stage.innerHTML = `
+          <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-xl p-6 text-center space-y-3">
+            <div class="text-xl font-bold">Time's Up! Final Score: ${srScore}</div>
+            <p class="text-sm text-[var(--muted-foreground)]">Personal Best: <strong>${state.bestSpeedRun || 0}</strong> • Earned +${(state.bestSpeedRun || 0) * 15} XP toward your Admin Rank!</p>
+            <button id="sr-restart-btn" class="px-5 py-2.5 rounded-lg text-sm font-bold bg-[var(--primary)] text-[var(--primary-foreground)] cursor-pointer">Play Again (Shuffle)</button>
+          </div>
+        `;
+        document.getElementById("sr-restart-btn").addEventListener("click", startSpeedRun);
+        return;
+      }
+
+      const card = srDeck[srIndex % srDeck.length];
+      stage.innerHTML = `
+        <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-xl p-5 space-y-4">
+          <div class="text-xs font-mono text-[var(--muted-foreground)]">TRAP #${srIndex + 1}</div>
+          <div class="text-base sm:text-lg font-bold leading-snug">${card.prompt}</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            ${card.choices.map((c, i) => `
+              <button data-sr-pick="${i}" class="p-4 rounded-xl border border-[var(--border)] bg-[var(--card)] hover:border-[var(--primary)] text-left text-sm font-semibold cursor-pointer transition-colors">
+                ${c}
+              </button>
+            `).join("")}
+          </div>
+        </div>
+        ${srLastFeedback ? `
+          <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-lg p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div>
+              <span class="font-bold mr-1.5" style="color: ${srLastFeedback.ok ? "var(--success)" : "var(--error)"};">${srLastFeedback.ok ? "✓ Nailed it!" : "✗ Trap sprung!"}</span>
+              <span>${srLastFeedback.why}</span>
+            </div>
+            <a href="${srLastFeedback.url}" target="_blank" rel="noopener" class="font-semibold text-[var(--link)] hover:underline shrink-0">↗ MS Docs</a>
+          </div>
+        ` : ""}
+      `;
+
+      stage.querySelectorAll("[data-sr-pick]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const pick = Number(btn.dataset.srPick);
+          const ok = pick === card.answer;
+          if (ok) {
+            srScore++;
+            srStreak++;
+            if (srScore > (state.bestSpeedRun || 0)) {
+              state.bestSpeedRun = srScore;
+              saveState();
+              updateXPAndRank();
+            }
+          } else {
+            srStreak = 0;
+          }
+          srLastFeedback = { ok, why: card.why, url: card.url };
+          srIndex++;
+          if (srIndex % srDeck.length === 0) srDeck = shuffle(SPEEDRUN_CARDS);
+          renderSpeedRun();
+        });
+      });
+    }
+
+    function startSpeedRun() {
+      clearInterval(srTimer);
+      srRunning = true;
+      srTimeLeft = 60;
+      srScore = 0;
+      srStreak = 0;
+      srIndex = 0;
+      srLastFeedback = null;
+      srDeck = shuffle(SPEEDRUN_CARDS);
+      renderSpeedRun();
+
+      srTimer = setInterval(() => {
+        srTimeLeft--;
+        updateSRHud();
+        if (srTimeLeft <= 0) {
+          clearInterval(srTimer);
+          srRunning = false;
+          renderSpeedRun();
+        }
+      }, 1000);
+    }
+
+    // =========================================================================
+    // 25-MINUTE DAILY SPRINT TIMER
+    // =========================================================================
+    let timerSeconds = 25 * 60;
+    let timerInterval = null;
+    const timerDisplay = document.getElementById("timer-display");
+    const timerToggle = document.getElementById("timer-toggle");
+    const timerReset = document.getElementById("timer-reset");
+
+    function updateTimerUI() {
+      const m = String(Math.floor(timerSeconds / 60)).padStart(2, "0");
+      const s = String(timerSeconds % 60).padStart(2, "0");
+      timerDisplay.textContent = `${m}:${s}`;
+    }
+
+    timerToggle.addEventListener("click", () => {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        timerToggle.textContent = "Resume";
+      } else {
+        timerToggle.textContent = "Pause";
+        timerInterval = setInterval(() => {
+          if (timerSeconds > 0) { timerSeconds--; updateTimerUI(); }
+          else { clearInterval(timerInterval); timerInterval = null; timerToggle.textContent = "Done!"; }
+        }, 1000);
+      }
+    });
+
+    timerReset.addEventListener("click", () => {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      timerSeconds = 25 * 60;
+      timerToggle.textContent = "Start";
+      updateTimerUI();
+    });
+
+    // =========================================================================
+    // TAB 5: OFFICIAL MICROSOFT LEARN STUDY GUIDE (ALL 81 OBJECTIVES)
+    // =========================================================================
+    const MS_BLUEPRINT = [
+      {
+        domain: "Manage Azure identities and governance (20–25%)",
+        id: "identity",
+        color: "var(--chart-1)",
+        url: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-identities-governance/",
+        groups: [
+          {
+            name: "Manage Microsoft Entra users and groups",
+            items: [
+              ["Create users and groups", "W1 Mon"],
+              ["Manage user and group properties", "W1 Mon"],
+              ["Manage licenses in Microsoft Entra ID", "W1 Mon"],
+              ["Manage external users", "W1 Mon"],
+              ["Configure self-service password reset (SSPR)", "W1 Mon"]
+            ]
+          },
+          {
+            name: "Manage access to Azure resources",
+            items: [
+              ["Manage built-in Azure roles", "W1 Tue"],
+              ["Assign roles at different scopes", "W1 Tue"],
+              ["Interpret access assignments", "W1 Tue"]
+            ]
+          },
+          {
+            name: "Manage Azure subscriptions and governance",
+            items: [
+              ["Implement and manage Azure Policy", "W1 Thu"],
+              ["Configure resource locks", "W1 Wed"],
+              ["Apply and manage tags on resources", "W1 Thu"],
+              ["Manage resource groups", "W1 Mon"],
+              ["Manage subscriptions", "W1 Tue"],
+              ["Manage costs by using alerts, budgets, and Azure Advisor recommendations", "W1 Mon & Fri"],
+              ["Configure management groups", "W1 Thu"]
+            ]
+          }
+        ]
+      },
+      {
+        domain: "Implement and manage storage (15–20%)",
+        id: "storage",
+        color: "var(--chart-4)",
+        url: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-storage/",
+        groups: [
+          {
+            name: "Configure access to storage",
+            items: [
+              ["Configure Azure Storage firewalls and virtual networks", "W3 Tue"],
+              ["Create and use shared access signature (SAS) tokens", "W3 Wed"],
+              ["Configure stored access policies", "W3 Wed"],
+              ["Manage access keys", "W3 Wed"],
+              ["Configure identity-based access for Azure Files", "W3 Thu"]
+            ]
+          },
+          {
+            name: "Configure and manage storage accounts",
+            items: [
+              ["Create and configure storage accounts", "W3 Mon"],
+              ["Configure Azure Storage redundancy", "W3 Thu"],
+              ["Configure object replication", "W3 Thu"],
+              ["Configure storage account encryption", "W3 Thu"],
+              ["Manage data by using Azure Storage Explorer and AzCopy", "W3 Mon"]
+            ]
+          },
+          {
+            name: "Configure Azure Files and Azure Blob Storage",
+            items: [
+              ["Create and configure a file share in Azure Storage", "W3 Mon"],
+              ["Create and configure a container in Blob Storage", "W3 Mon"],
+              ["Configure storage tiers", "W3 Thu"],
+              ["Configure snapshots and soft delete for Azure Files", "W3 Mon"],
+              ["Configure blob lifecycle management", "W3 Thu"],
+              ["Configure blob versioning", "W3 Thu"]
+            ]
+          }
+        ]
+      },
+      {
+        domain: "Deploy and manage Azure compute resources (20–25%)",
+        id: "compute",
+        color: "var(--chart-3)",
+        url: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-compute-resources/",
+        groups: [
+          {
+            name: "Automate deployment by using ARM templates or Bicep files",
+            items: [
+              ["Interpret an ARM template or a Bicep file", "W4 Mon"],
+              ["Modify an existing ARM template", "W4 Mon"],
+              ["Modify an existing Bicep file", "W4 Mon"],
+              ["Deploy resources by using an ARM template or a Bicep file", "W4 Mon"],
+              ["Export a deployment as an ARM template or convert an ARM template to a Bicep file", "W4 Mon"]
+            ]
+          },
+          {
+            name: "Create and configure virtual machines",
+            items: [
+              ["Create a virtual machine", "W4 Mon"],
+              ["Configure Azure Disk Encryption", "W4 Wed"],
+              ["Move a virtual machine to another resource group, subscription, or region", "W4 Wed"],
+              ["Manage virtual machine sizes", "W4 Wed"],
+              ["Manage virtual machine disks", "W4 Wed"],
+              ["Deploy virtual machines to availability zones and availability sets", "W4 Thu"],
+              ["Deploy and configure an Azure Virtual Machine Scale Sets", "W4 Thu"]
+            ]
+          },
+          {
+            name: "Provision and manage containers in the Azure portal",
+            items: [
+              ["Create and manage an Azure container registry", "W5 Wed"],
+              ["Provision a container by using Azure Container Instances", "W5 Wed"],
+              ["Provision a container by using Azure Container Apps", "W5 Thu"],
+              ["Manage sizing and scaling for containers, including ACI and ACA", "W5 Thu"]
+            ]
+          },
+          {
+            name: "Create and configure Azure App Service",
+            items: [
+              ["Provision an App Service plan", "W5 Mon"],
+              ["Configure scaling for an App Service plan", "W5 Mon"],
+              ["Create an App Service", "W5 Mon"],
+              ["Configure certificates and TLS for an App Service", "W5 Mon"],
+              ["Map an existing custom DNS name to an App Service", "W5 Mon"],
+              ["Configure backup for an App Service", "W5 Mon"],
+              ["Configure networking settings for an App Service", "W5 Tue"],
+              ["Configure deployment slots for an App Service", "W5 Tue"]
+            ]
+          }
+        ]
+      },
+      {
+        domain: "Implement and manage virtual networking (15–20%)",
+        id: "networking",
+        color: "var(--chart-2)",
+        url: "https://learn.microsoft.com/en-us/training/paths/az-104-manage-virtual-networks/",
+        groups: [
+          {
+            name: "Configure and manage virtual networks in Azure",
+            items: [
+              ["Create and configure virtual networks and subnets", "W2 Mon"],
+              ["Create and configure virtual network peering", "W2 Tue"],
+              ["Configure public IP addresses", "W6 Mon"],
+              ["Configure user-defined network routes", "W2 Thu"],
+              ["Troubleshoot network connectivity", "W2 Wed & W7 Wed"]
+            ]
+          },
+          {
+            name: "Configure secure access to virtual networks",
+            items: [
+              ["Create and configure NSGs and application security groups (ASGs)", "W2 Wed & Thu"],
+              ["Evaluate effective security rules in NSGs", "W2 Wed"],
+              ["Implement Azure Bastion", "W6 Wed"],
+              ["Configure service endpoints for Azure PaaS", "W3 Tue"],
+              ["Configure private endpoints for Azure PaaS", "W3 Tue"]
+            ]
+          },
+          {
+            name: "Configure name resolution and load balancing",
+            items: [
+              ["Configure Azure DNS", "W6 Thu"],
+              ["Configure an internal or public load balancer", "W6 Mon & Tue"],
+              ["Troubleshoot load balancing", "W6 Wed & Thu"]
+            ]
+          }
+        ]
+      },
+      {
+        domain: "Monitor and maintain Azure resources (10–15%)",
+        id: "monitor",
+        color: "var(--chart-5)",
+        url: "https://learn.microsoft.com/en-us/training/paths/az-104-monitor-backup-resources/",
+        groups: [
+          {
+            name: "Monitor resources in Azure",
+            items: [
+              ["Interpret metrics in Azure Monitor", "W7 Mon & Tue"],
+              ["Configure log settings in Azure Monitor", "W7 Mon"],
+              ["Query and analyze logs in Azure Monitor", "W7 Mon"],
+              ["Set up alert rules, action groups, and alert processing rules in Azure Monitor", "W7 Tue"],
+              ["Configure and interpret monitoring of VMs, storage accounts, and networks by using Azure Monitor Insights", "W7 Mon"],
+              ["Use Azure Network Watcher and Connection Monitor", "W7 Wed"]
+            ]
+          },
+          {
+            name: "Implement backup and recovery",
+            items: [
+              ["Create a Recovery Services vault", "W7 Thu"],
+              ["Create an Azure Backup vault", "W7 Thu"],
+              ["Create and configure a backup policy", "W7 Thu"],
+              ["Perform backup and restore operations by using Azure Backup", "W7 Thu"],
+              ["Configure Azure Site Recovery for Azure resources", "W7 Thu"],
+              ["Perform a failover to a secondary region by using Site Recovery", "W7 Thu"],
+              ["Configure and interpret reports and alerts for backups", "W7 Fri"]
+            ]
+          }
+        ]
+      }
+    ];
+
+    let bpFilter = "all";
+    let bpQuery = "";
+
+    function renderBlueprint() {
+      const filtersEl = document.getElementById("bp-filters");
+      const listEl = document.getElementById("bp-list");
+      if (!state.blueprintChecked) state.blueprintChecked = {};
+
+      let totalItems = 0, doneItems = 0;
+      MS_BLUEPRINT.forEach((d, di) => {
+        d.groups.forEach((g, gi) => {
+          g.items.forEach((_, ii) => {
+            totalItems++;
+            if (state.blueprintChecked[`bp_${di}_${gi}_${ii}`]) doneItems++;
+          });
+        });
+      });
+
+      document.getElementById("blueprint-badge").textContent = `${doneItems}/${totalItems}`;
+
+      const filterDefs = [{ id: "all", label: `All (${totalItems})` }, ...MS_BLUEPRINT.map(d => ({ id: d.id, label: d.domain.split(" (")[0] }))];
+      filtersEl.innerHTML = filterDefs.map(f => `
+        <button data-bp-filter="${f.id}" class="px-3 py-1 rounded-lg text-xs font-semibold border cursor-pointer transition-colors ${
+          bpFilter === f.id
+            ? "bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]"
+            : "bg-[var(--content)] text-[var(--foreground)] border-[var(--card-border)] hover:bg-[var(--secondary)]"
+        }">${f.label}</button>
+      `).join("");
+
+      filtersEl.querySelectorAll("[data-bp-filter]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          bpFilter = btn.dataset.bpFilter;
+          renderBlueprint();
+        });
+      });
+
+      const q = bpQuery.trim().toLowerCase();
+      listEl.innerHTML = MS_BLUEPRINT.map((d, di) => {
+        if (bpFilter !== "all" && d.id !== bpFilter) return "";
+        const groupHtml = d.groups.map((g, gi) => {
+          const rows = g.items.map(([text, sprint], ii) => {
+            if (q && !text.toLowerCase().includes(q) && !g.name.toLowerCase().includes(q) && !sprint.toLowerCase().includes(q)) return "";
+            const key = `bp_${di}_${gi}_${ii}`;
+            const checked = !!state.blueprintChecked[key];
+            return `
+              <label class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg hover:bg-[var(--card)] cursor-pointer transition-colors">
+                <span class="flex items-start gap-2.5 text-xs sm:text-sm">
+                  <input type="checkbox" data-bp-key="${key}" ${checked ? "checked" : ""} class="mt-0.5 w-4 h-4 accent-[var(--primary)] cursor-pointer shrink-0" />
+                  <span class="${checked ? "line-through text-[var(--muted-foreground)]" : "text-[var(--foreground)]"}">${text}</span>
+                </span>
+                <span class="px-2 py-0.5 rounded text-xs font-mono font-semibold bg-[var(--secondary)] text-[var(--secondary-foreground)] shrink-0">${sprint}</span>
+              </label>
+            `;
+          }).filter(Boolean).join("");
+          if (!rows) return "";
+          return `
+            <div class="space-y-1">
+              <div class="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] px-1 pt-1">${g.name}</div>
+              <div class="space-y-0.5">${rows}</div>
+            </div>
+          `;
+        }).filter(Boolean).join("");
+        if (!groupHtml) return "";
+        return `
+          <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between flex-wrap gap-2 border-b border-[var(--card-border)] pb-2">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full inline-block" style="background: ${d.color};"></span>
+                <h3 class="text-sm font-bold">${d.domain}</h3>
+              </div>
+              <a href="${d.url}" target="_blank" rel="noopener" class="text-xs font-semibold text-[var(--link)] hover:underline">↗ Official MS Path</a>
+            </div>
+            ${groupHtml}
+          </div>
+        `;
+      }).filter(Boolean).join("") || `<div class="text-sm text-[var(--muted-foreground)] py-4 text-center">No objectives match "${bpQuery}".</div>`;
+
+      listEl.querySelectorAll("[data-bp-key]").forEach(cb => {
+        cb.addEventListener("change", () => {
+          state.blueprintChecked[cb.dataset.bpKey] = cb.checked;
+          saveState();
+          renderBlueprint();
+        });
+      });
+    }
+
+    document.getElementById("bp-search").addEventListener("input", e => {
+      bpQuery = e.target.value;
+      renderBlueprint();
+    });
+
+    
+    // Standalone Dark / Light theme toggle
+    const themeBtn = document.getElementById("theme-toggle");
+    const savedTheme = localStorage.getItem("az104_theme") || "dark";
+    function applyTheme(mode) {
+      document.documentElement.classList.toggle("light", mode === "light");
+      themeBtn.textContent = mode === "light" ? "🌙 Dark" : "☀ Light";
+      try { localStorage.setItem("az104_theme", mode); } catch (_) {}
+    }
+    applyTheme(savedTheme);
+    themeBtn.addEventListener("click", () => {
+      applyTheme(document.documentElement.classList.contains("light") ? "dark" : "light");
+    });
+
+    // Initial render
+    renderMapSelection();
+    renderSprints();
+    renderIncidents();
+    renderSpeedRun();
+    renderBlueprint();
+    updateXPAndRank();
+    requestAnimationFrame(drawConnections);
+  </script>
+</body>
+</html>
