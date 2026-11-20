@@ -51,7 +51,23 @@
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
               <span>Practice Studio</span>
             </span>
-            <span id="nav-practice-count" class="nav-count">0/20</span>
+            <span id="nav-practice-count" class="nav-count">0/35</span>
+          </button>
+
+          <button data-view="examsim" class="nav-btn">
+            <span class="nav-btn-left">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>Timed Exam Simulator</span>
+            </span>
+            <span id="nav-exam-badge" class="nav-count">Mock</span>
+          </button>
+
+          <button data-view="matrices" class="nav-btn">
+            <span class="nav-btn-left">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+              <span>Decision Matrices</span>
+            </span>
+            <span class="nav-count">8</span>
           </button>
 
           <button data-view="blueprint" class="nav-btn">
@@ -114,31 +130,32 @@
       <section id="view-overview" class="view-section">
         <header class="page-header">
           <div>
-            <h1 class="page-title">Exam Readiness &amp; Domain Diagnostics</h1>
-            <p class="page-desc">Blends your 81-objective Microsoft Study Guide coverage (30%), hands-on labs &amp; capstones (30%), and troubleshooting &amp; mock exam accuracy (40%) weighted by official AZ-104 domain percentages.</p>
+            <h1 class="page-title">Exam Readiness &amp; First-Try Pass Diagnostics</h1>
+            <p class="page-desc">Calibrated AZ-104 readiness engine: blends 81-item Blueprint coverage (20%), hands-on labs &amp; exit checkpoints (25%), and verified active-recall &amp; mock exam accuracy (55%).</p>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button id="btn-open-mock-modal" class="btn">+ Log Practice Exam Score</button>
-            <button id="btn-jump-plan" class="btn btn-primary">Go to Study Plan &amp; Labs →</button>
+            <button id="btn-launch-examsim" class="btn btn-primary">Launch Timed Exam Simulator →</button>
+            <button id="btn-open-mock-modal" class="btn">+ Log External Exam Score</button>
+            <button id="btn-jump-plan" class="btn">Study Plan &amp; Labs</button>
           </div>
         </header>
 
         <!-- 4 Top Summary Metrics -->
         <div class="metrics-grid">
           <div class="metric-box">
-            <div class="metric-label">Overall Exam Readiness</div>
+            <div class="metric-label">Calibrated Exam Readiness</div>
             <div id="ov-readiness-pct" class="metric-value">0%</div>
             <div id="ov-scaled-est" class="metric-foot">Est. score: 300 / 1000 (Pass: 700)</div>
           </div>
           <div class="metric-box">
-            <div class="metric-label">Official Blueprint Covered</div>
-            <div id="ov-bp-progress" class="metric-value">0 / 81</div>
-            <div class="metric-foot">Verified Oct 30, 2026 MS Study Guide</div>
+            <div class="metric-label">Verified Recall Accuracy</div>
+            <div id="ov-verified-acc" class="metric-value">0%</div>
+            <div id="ov-leitner-foot" class="metric-foot">Leitner Queue: 0 due</div>
           </div>
           <div class="metric-box">
-            <div class="metric-label">Integration Capstones</div>
-            <div id="ov-cap-progress" class="metric-value">0 / 4</div>
-            <div class="metric-foot">Multi-domain connected Azure labs</div>
+            <div class="metric-label">Official Blueprint &amp; Capstones</div>
+            <div id="ov-bp-progress" class="metric-value">0 / 81</div>
+            <div id="ov-cap-progress" class="metric-foot">Capstones: 0 / 4 completed</div>
           </div>
           <div class="metric-box">
             <div class="metric-label">Consistency Streak</div>
@@ -146,6 +163,9 @@
             <div class="metric-foot">Weekends never break your streak</div>
           </div>
         </div>
+
+        <!-- 4-Gate First-Try Pass Verdict Panel -->
+        <div id="ov-pass-gates-panel" class="panel" style="margin-bottom:24px;"></div>
 
         <!-- "Where You Need the Most Work" Diagnostic Card -->
         <div id="ov-weakspot-panel" class="panel" style="margin-bottom:24px;"></div>
@@ -157,19 +177,22 @@
               <h2 class="panel-title">Per-Domain Mastery Breakdown</h2>
               <div class="panel-sub">Shows exact progress across all 5 official AZ-104 exam domains and where points are won or lost.</div>
             </div>
-            <span class="badge">Target: 75%+ in every domain</span>
+            <span class="badge">Target: 75%+ &amp; 0 Box-1 misses in every domain</span>
           </div>
           <div id="ov-domain-rows" class="divider-list"></div>
         </div>
 
-        <!-- Logged External Practice Exams Panel -->
+        <!-- Logged External & Built-In Practice Exams Panel -->
         <div class="panel">
           <div class="panel-header">
             <div>
-              <h2 class="panel-title">Practice Assessment &amp; Mock Exam Log</h2>
-              <div class="panel-sub">Log scores from Microsoft's AI Skills Navigator Practice Assessment, Tutorials Dojo, or MeasureUp to calibrate your domain readiness.</div>
+              <h2 class="panel-title">Practice Assessment &amp; Timed Mock Exam Log</h2>
+              <div class="panel-sub">Built-in Timed Exam Simulator attempts auto-log here, or log scores from Microsoft's AI Skills Navigator Practice Assessment, Tutorials Dojo, or MeasureUp.</div>
             </div>
-            <button id="btn-open-mock-modal-2" class="btn btn-sm">+ Log Attempt</button>
+            <div style="display:flex; gap:8px;">
+              <button id="btn-launch-examsim-2" class="btn btn-primary btn-sm">Take Built-In Timed Mock</button>
+              <button id="btn-open-mock-modal-2" class="btn btn-sm">+ Log External Score</button>
+            </div>
           </div>
           <div id="ov-mock-history" class="panel-body"></div>
         </div>
@@ -295,11 +318,12 @@
           </div>
           <div class="segmented" role="tablist">
             <button data-prac-sub="tickets" class="seg-btn active">P1 Incidents (20)</button>
+            <button data-prac-sub="interactive" class="seg-btn">Interactive Drills (15)</button>
             <button data-prac-sub="bughunts" class="seg-btn">Code Bug Hunts (8)</button>
             <button data-prac-sub="simulators" class="seg-btn">Azure Simulators (3)</button>
             <button data-prac-sub="casestudies" class="seg-btn">Case Studies (2)</button>
             <button data-prac-sub="scavenger" class="seg-btn">Open-Book 45s (10)</button>
-            <button data-prac-sub="speedrun" class="seg-btn">Speed Run (36)</button>
+            <button data-prac-sub="speedrun" class="seg-btn">Speed Run &amp; Leitner (36)</button>
           </div>
         </header>
 
@@ -308,7 +332,7 @@
           <div class="panel-header">
             <div>
               <div class="panel-title">P1 Troubleshooting Queue</div>
-              <div class="panel-sub">Diagnose broken multi-domain Azure configurations. Click the official Microsoft Learn proof link after each ticket.</div>
+              <div class="panel-sub">Diagnose broken multi-domain Azure configurations. Any miss enters your 3-Box Leitner Spaced-Repetition Queue.</div>
             </div>
             <span id="inc-score" class="badge mono">0 / 20 solved</span>
           </div>
@@ -317,6 +341,22 @@
             <div id="ticket-pills" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
             <div id="ticket-view" style="display:flex; flex-direction:column; gap:14px;"></div>
           </div>
+        </div>
+
+        <!-- Practice 1B: 15 Interactive AZ-104 Exam Drills (Order-the-Steps, Multi-Dropdown Tables, Locked Yes/No Series) -->
+        <div id="prac-interactive" class="panel hidden">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Authentic AZ-104 Interactive Exam Formats</div>
+              <div class="panel-sub">Train on the exact multi-part formats that decide 40–50% of AZ-104 exam points: Order-the-Steps sequences, Multi-Dropdown Config Tables, and Non-Revertible Locked Yes/No Series.</div>
+            </div>
+            <div class="segmented">
+              <button data-int-mode="sequence" class="seg-btn active">1. Order-the-Steps (6)</button>
+              <button data-int-mode="dropdown" class="seg-btn">2. Multi-Dropdown Tables (6)</button>
+              <button data-int-mode="yesno" class="seg-btn">3. Locked Yes/No Series (3×3)</button>
+            </div>
+          </div>
+          <div id="int-drills-root" class="panel-body" style="display:flex; flex-direction:column; gap:16px;"></div>
         </div>
 
         <!-- Practice 2: 8 Spot-the-2-Bugs Hunts -->
@@ -361,12 +401,12 @@
           <div id="scav-root" class="panel-body" style="display:flex; flex-direction:column; gap:16px;"></div>
         </div>
 
-        <!-- Practice 6: 60s Exam Trap Speed Run & Spaced Repetition Queue -->
+        <!-- Practice 6: 60s Exam Trap Speed Run & 3-Box Leitner Spaced Repetition Queue -->
         <div id="prac-speedrun" class="panel hidden">
           <div class="panel-header">
             <div>
-              <div class="panel-title">60-Second Exam Trap Speed Run &amp; Missed-Trap Queue</div>
-              <div class="panel-sub">Every trap you miss is saved automatically into your Spaced-Repetition Rematch Queue.</div>
+              <div class="panel-title">60-Second Exam Trap Speed Run &amp; 3-Box Leitner Spaced Repetition</div>
+              <div class="panel-sub">Any missed question across the workspace enters Box 1 (0/2 streak) and requires 2 consecutive correct reviews to graduate to Box 3.</div>
             </div>
             <div style="display:flex; gap:8px;" class="mono">
               <span class="badge">Time: <strong id="sr-time" style="margin-left:4px;">60s</strong></span>
@@ -382,7 +422,38 @@
       </section>
 
       <!-- ================================================================= -->
-      <!-- VIEW 4: OFFICIAL MICROSOFT STUDY GUIDE BLUEPRINT (81/81)          -->
+      <!-- VIEW 4: BUILT-IN TIMED EXAM SIMULATOR                             -->
+      <!-- ================================================================= -->
+      <section id="view-examsim" class="view-section hidden">
+        <header class="page-header">
+          <div>
+            <h1 class="page-title">Timed AZ-104 Exam Simulator</h1>
+            <p class="page-desc">Simulates real exam conditions: domain-weighted multi-format questions, 90-second/question pacing clock, question flagging, an Open-Book MS Learn lookup stopwatch, and automatic Readiness score logging.</p>
+          </div>
+        </header>
+        <div id="examsim-root"></div>
+      </section>
+
+      <!-- ================================================================= -->
+      <!-- VIEW 5: INTERACTIVE DECISION MATRICES & ACTIVE-RECALL SHEETS      -->
+      <!-- ================================================================= -->
+      <section id="view-matrices" class="view-section hidden">
+        <header class="page-header">
+          <div>
+            <h1 class="page-title">High-Yield Decision Matrices &amp; SKU Cheat Sheets</h1>
+            <p class="page-desc">The 8 most-tested comparison tables on AZ-104. Toggle <strong>Active Recall Mode</strong> to blank out critical SKU/limit cells and test your memory before revealing.</p>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="btn-toggle-matrix-recall" class="btn btn-primary">Active Recall Mode: ON (Blank Out Key Facts)</button>
+            <button id="btn-reset-matrix-reveals" class="btn">Hide All Cells Again</button>
+          </div>
+        </header>
+        <div id="matrix-filters" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;"></div>
+        <div id="matrices-root" style="display:flex; flex-direction:column; gap:18px;"></div>
+      </section>
+
+      <!-- ================================================================= -->
+      <!-- VIEW 6: OFFICIAL MICROSOFT STUDY GUIDE BLUEPRINT (81/81)          -->
       <!-- ================================================================= -->
       <section id="view-blueprint" class="view-section hidden">
         <header class="page-header">
@@ -466,6 +537,7 @@
   <script src="js/data-core.js"></script>
   <script src="js/data-drills.js"></script>
   <script src="js/data-guides.js"></script>
+  <script src="js/data-exam.js"></script>
   <script src="js/readiness.js"></script>
   <script src="js/simulators.js"></script>
   <script src="js/app.js"></script>

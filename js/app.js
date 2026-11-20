@@ -1,29 +1,41 @@
 // =============================================================================
-// AZ-104 OPS QUEST — MAIN APPLICATION CONTROLLER (v3 EDITORIAL WORKSPACE)
-// Connects Overview Readiness Tracker, Dual-Pace Study Plan & Step-by-Step Lab
-// Guides, 4 Multi-Domain Integration Capstones, Practice Studio, and Blueprint
+// AZ-104 OPS QUEST — MAIN APPLICATION CONTROLLER (v4 FIRST-TRY PASS ENGINE)
+// Connects Calibrated Overview & 4-Gate Pass Checklist, Study Plan & Lab Guides
+// with Sprint Exit Checkpoints, 15 Interactive Exam Drills, 3-Box Leitner
+// Spaced Repetition, Built-In Timed Exam Simulator, 8 Active-Recall Decision
+// Matrices, and 81-Item Official Blueprint Sync
 // =============================================================================
 
 (function () {
   const { NODES, EDGES, DOMAINS, WEEKS, MS_BLUEPRINT } = window.AZ104_CORE;
   const { TICKETS, BUG_HUNTS, SPEEDRUN_CARDS, CASE_STUDIES, SCAVENGER_HUNTS } = window.AZ104_DRILLS;
-  const { OFFICIAL_MS_LABS, INTEGRATION_LABS, BLITZ_WEEKS, getGuideForSprint, getGuideByKey } = window.AZ104_GUIDES;
+  const { OFFICIAL_MS_LABS, INTEGRATION_LABS, BLITZ_WEEKS, SPRINT_TO_GUIDE, getGuideForSprint, getGuideByKey } = window.AZ104_GUIDES;
+  const { SEQUENCE_DRILLS, DROPDOWN_DRILLS, YESNO_SERIES, DECISION_MATRICES, TOPIC_CHECKPOINTS } = window.AZ104_EXAM_DATA;
 
-  const STORAGE_KEY = "az104_northstar_quest_v3";
+  const STORAGE_KEY = "az104_northstar_quest_v4";
   let state = {
     activeView: "overview",
-    planSub: "steady",      // "steady" | "blitz" | "capstones" | "topology"
-    planMode: "steady",     // "steady" | "blitz" (used by readiness engine)
-    pracSub: "tickets",     // "tickets" | "bughunts" | "simulators" | "casestudies" | "scavenger" | "speedrun"
+    planSub: "steady",        // "steady" | "blitz" | "capstones" | "topology"
+    planMode: "steady",       // "steady" | "blitz"
+    pracSub: "tickets",       // "tickets" | "interactive" | "bughunts" | "simulators" | "casestudies" | "scavenger" | "speedrun"
+    intMode: "sequence",      // "sequence" | "dropdown" | "yesno"
+    activeSeqId: "seq1",
+    activeDdId: "dd1",
+    activeYnId: "yn1",
     selectedNode: "compute",
-    checked: {},            // 8-week sprints
-    blitzChecked: {},       // 21-day blitz days
-    capstoneChecked: {},    // 4 multi-domain integration capstones
-    openGuides: {},         // { sprintOrBlitzOrCapId: true }
+    checked: {},              // 8-week sprints
+    blitzChecked: {},         // 21-day blitz days
+    capstoneChecked: {},      // 4 multi-domain integration capstones
+    openGuides: {},           // { sprintOrBlitzOrCapId: true }
     solvedTickets: {},
     solvedBugHunts: {},
     solvedCaseQ: {},
     solvedHunts: {},
+    solvedSequences: {},
+    solvedDropdowns: {},
+    solvedYesNo: {},
+    solvedCheckpoints: {},
+    checkpointAnswers: {},
     activeTicket: "t1",
     ticketFilter: "all",
     activeBugHunt: "bh1",
@@ -33,16 +45,22 @@
     openBlitzWeeks: { 1: true },
     bestSpeedRun: 0,
     missedTraps: {},
+    leitner: {},              // { itemId: { id, domain, type, title, prompt, choices, answer, why, url, box: 1|2|3, streak: 0|1|2, misses } }
     domainStats: {},
     blueprintChecked: {},
+    blueprintManualUncheck: {},
     mockLogs: [],
     studyDates: [],
-    rescueCount: 0
+    rescueCount: 0,
+    matrixRecallMode: true,
+    matrixFilter: "all",
+    revealedMatrixCells: {}
   };
 
   try {
     const saved = JSON.parse(
       localStorage.getItem(STORAGE_KEY) ||
+      localStorage.getItem("az104_northstar_quest_v3") ||
       localStorage.getItem("az104_northstar_quest_v2") ||
       localStorage.getItem("az104_northstar_quest_v1") ||
       "null"
@@ -52,6 +70,16 @@
 
   function saveState() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+  }
+
+  // Normalize domain names from strings like "Compute + Networking" -> "compute"
+  function normalizeDomainId(raw) {
+    const s = String(raw || "").toLowerCase();
+    if (s.includes("ident") || s.includes("gov")) return "identity";
+    if (s.includes("net")) return "networking";
+    if (s.includes("stor")) return "storage";
+    if (s.includes("mon") || s.includes("back")) return "monitor";
+    return "compute";
   }
 
   // ---------------------------------------------------------------------------
@@ -144,7 +172,7 @@
   });
 
   // ---------------------------------------------------------------------------
-  // PRIMARY SIDEBAR NAVIGATION (4 VIEWS)
+  // PRIMARY SIDEBAR NAVIGATION (6 VIEWS)
   // ---------------------------------------------------------------------------
   function switchView(viewId) {
     state.activeView = viewId;
@@ -159,6 +187,8 @@
     if (viewId === "overview") renderOverview();
     if (viewId === "plan") renderPlanView();
     if (viewId === "practice") renderPracticeView();
+    if (viewId === "examsim") renderExamSim();
+    if (viewId === "matrices") renderMatricesView();
     if (viewId === "blueprint") renderBlueprint();
   }
 
@@ -167,6 +197,85 @@
   });
 
   document.getElementById("btn-jump-plan").addEventListener("click", () => switchView("plan"));
+  const launchSimBtn1 = document.getElementById("btn-launch-examsim");
+  if (launchSimBtn1) launchSimBtn1.addEventListener("click", () => switchView("examsim"));
+  const launchSimBtn2 = document.getElementById("btn-launch-examsim-2");
+  if (launchSimBtn2) launchSimBtn2.addEventListener("click", () => switchView("examsim"));
+
+  // ---------------------------------------------------------------------------
+  // UNIFIED 3-BOX LEITNER SPACED REPETITION & DOMAIN ACCURACY TRACKER
+  // Box 1: Urgent Repeat (0/2 streak)
+  // Box 2: Reinforcing (1/2 streak)
+  // Box 3: Graduated / Mastered (2/2 consecutive review streak)
+  // ---------------------------------------------------------------------------
+  function lookupReviewableItem(itemId) {
+    const sr = SPEEDRUN_CARDS.find(c => c.id === itemId);
+    if (sr) return { id: sr.id, domain: sr.domain, type: "Exam Trap", prompt: sr.prompt, choices: sr.choices, answer: sr.answer, why: sr.why, url: sr.url };
+
+    const tk = TICKETS.find(t => t.id === itemId);
+    if (tk) return { id: tk.id, domain: tk.domain, type: `P1 Incident (${tk.code})`, prompt: `${tk.title}: ${tk.symptom}\n\n${tk.question}`, choices: tk.options, answer: tk.answer, why: tk.explanation, url: tk.msUrl };
+
+    for (const cs of CASE_STUDIES) {
+      const cq = cs.questions.find(q => q.id === itemId);
+      if (cq) return { id: cq.id, domain: normalizeDomainId(cs.title), type: `Case Study (${cs.title.split(":")[0]})`, prompt: cq.q, choices: cq.options, answer: cq.answer, why: cq.why, url: "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-104" };
+    }
+
+    for (const list of Object.values(TOPIC_CHECKPOINTS)) {
+      const cp = list.find(x => x.id === itemId);
+      if (cp) return { id: cp.id, domain: cp.domain, type: "Sprint Checkpoint", prompt: cp.q, choices: cp.options, answer: cp.answer, why: cp.why, url: "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-104" };
+    }
+
+    return null;
+  }
+
+  function trackDomainResult(domainId, ok, itemId, isLeitnerReview) {
+    const dom = normalizeDomainId(domainId);
+    if (!state.domainStats) state.domainStats = {};
+    if (!state.domainStats[dom]) state.domainStats[dom] = { right: 0, wrong: 0 };
+    if (ok) state.domainStats[dom].right++;
+    else state.domainStats[dom].wrong++;
+
+    if (!state.leitner) state.leitner = {};
+    if (!state.missedTraps) state.missedTraps = {};
+
+    if (itemId) {
+      const meta = lookupReviewableItem(itemId);
+      const existing = state.leitner[itemId];
+
+      if (!ok) {
+        // Any miss drops the item straight into Box 1 (0/2 streak)
+        state.leitner[itemId] = {
+          id: itemId,
+          domain: meta ? meta.domain : dom,
+          type: meta ? meta.type : "Practice Drill",
+          title: meta ? meta.prompt : itemId,
+          box: 1,
+          streak: 0,
+          misses: (existing ? existing.misses || 0 : 0) + 1,
+          lastSeen: todayKey()
+        };
+        if (itemId.startsWith("sr")) {
+          state.missedTraps[itemId] = (state.missedTraps[itemId] || 0) + 1;
+        }
+      } else if (existing && (isLeitnerReview || existing.box < 3)) {
+        // Requiring 2 consecutive correct answers to graduate to Box 3!
+        const newStreak = (existing.streak || 0) + 1;
+        const newBox = newStreak >= 2 ? 3 : 2;
+        state.leitner[itemId] = {
+          ...existing,
+          box: newBox,
+          streak: Math.min(2, newStreak),
+          lastSeen: todayKey()
+        };
+        if (newBox === 3 && state.missedTraps[itemId]) {
+          delete state.missedTraps[itemId];
+        }
+      }
+    }
+
+    saveState();
+    renderOverview();
+  }
 
   // ---------------------------------------------------------------------------
   // VIEW 1: OVERVIEW & UNIFIED DOMAIN READINESS TRACKER
@@ -180,19 +289,76 @@
       : Object.values(state.checked || {}).filter(Boolean).length;
     const planTotal = isBlitz ? 21 : 40;
     const ticketsDone = Object.values(state.solvedTickets || {}).filter(Boolean).length;
+    const intDoneCount =
+      Object.values(state.solvedSequences || {}).filter(Boolean).length +
+      Object.values(state.solvedDropdowns || {}).filter(Boolean).length +
+      Object.values(state.solvedYesNo || {}).filter(Boolean).length;
 
     // Sidebar badges
     document.getElementById("sidebar-readiness-pill").textContent = `${report.overallPct}%`;
     document.getElementById("nav-plan-count").textContent = `${planDone}/${planTotal}`;
-    document.getElementById("nav-practice-count").textContent = `${ticketsDone}/${TICKETS.length}`;
+    document.getElementById("nav-practice-count").textContent = `${ticketsDone + intDoneCount}/35`;
     document.getElementById("nav-bp-count").textContent = `${report.totalBpDone}/${report.totalBpAll}`;
+    const examBadge = document.getElementById("nav-exam-badge");
+    if (examBadge) {
+      examBadge.textContent = report.mockLogs.length ? `${report.mockLogs[0].overall}%` : "Mock";
+    }
 
     // Top 4 Metrics
     document.getElementById("ov-readiness-pct").textContent = `${report.overallPct}%`;
-    document.getElementById("ov-scaled-est").textContent = `Est. scaled score: ${report.estimatedScaledScore} / 1000 (Pass: 700)`;
+    document.getElementById("ov-scaled-est").textContent = `Calibrated score: ${report.estimatedScaledScore} / 1000 (Pass: 700)`;
+    const verAccEl = document.getElementById("ov-verified-acc");
+    if (verAccEl) verAccEl.textContent = `${report.verifiedAccuracyPct}%`;
+    const leitnerFootEl = document.getElementById("ov-leitner-foot");
+    if (leitnerFootEl) {
+      leitnerFootEl.textContent = `Box 1 Urgent: ${report.box1Total} • Box 2: ${report.box2Total} • Graduated: ${report.box3Total}`;
+    }
     document.getElementById("ov-bp-progress").textContent = `${report.totalBpDone} / ${report.totalBpAll}`;
-    document.getElementById("ov-cap-progress").textContent = `${capDone} / 4`;
+    document.getElementById("ov-cap-progress").textContent = `Capstones: ${capDone} / 4 completed`;
     document.getElementById("ov-streak").textContent = `${calcWeekdayStreak()} days`;
+
+    // 4-Gate First-Try Pass Checklist Panel
+    const gatesPanel = document.getElementById("ov-pass-gates-panel");
+    if (gatesPanel) {
+      gatesPanel.innerHTML = `
+        <div class="panel-header">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="badge ${report.passVerdictClass}">${report.passVerdict}</span>
+              <h2 class="panel-title">First-Try Pass Readiness Checklist (${report.gatesPassedCount} / 4 Gates Cleared)</h2>
+            </div>
+            <div class="panel-sub" style="margin-top:3px;">
+              Honest calibration: checking lab or blueprint boxes alone caps out below 700. Clear all 4 active-recall gates below before sitting the real AZ-104 exam.
+            </div>
+          </div>
+          <button id="ov-open-leitner-btn" class="btn btn-sm ${report.dueTotal > 0 ? "btn-primary" : ""}">
+            Review Leitner Queue (${report.dueTotal} due) →
+          </button>
+        </div>
+        <div class="panel-body">
+          <div class="gates-grid">
+            ${report.passGates.map((g, idx) => `
+              <div class="gate-card ${g.passed ? "passed" : ""}">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                  <span class="mono" style="font-size:11px; font-weight:700; color:${g.passed ? "var(--success)" : "var(--text-secondary)"};">GATE ${idx + 1}</span>
+                  <span class="badge ${g.passed ? "badge-success" : "badge-warning"}">${g.passed ? "✓ Cleared" : "In Progress"}</span>
+                </div>
+                <div style="font-weight:650; font-size:13px; margin-top:2px;">${g.label}</div>
+                <div style="font-size:12px; color:var(--text-secondary);" class="mono">${g.detail}</div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+      const leitnerBtn = gatesPanel.querySelector("#ov-open-leitner-btn");
+      if (leitnerBtn) {
+        leitnerBtn.addEventListener("click", () => {
+          state.pracSub = "speedrun";
+          srMode = "review";
+          switchView("practice");
+        });
+      }
+    }
 
     // "Where You Need the Most Work" Diagnostic Card
     const w = report.weakest;
@@ -217,9 +383,10 @@
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:8px;">
           <button id="wk-open-guide" class="btn btn-primary btn-sm">1. Open ${w.shortName} Lab Guide</button>
-          <button id="wk-open-cap" class="btn btn-sm">2. Open Multi-Domain Capstone</button>
+          <button id="wk-open-int" class="btn btn-sm">2. Interactive Drills</button>
           <button id="wk-open-tickets" class="btn btn-sm">3. Drill ${w.shortName} P1 Incidents</button>
-          <button id="wk-open-sim" class="btn btn-sm">4. Launch Simulator</button>
+          <button id="wk-open-matrix" class="btn btn-sm">4. Active-Recall Matrix</button>
+          <button id="wk-open-sim" class="btn btn-sm">5. Launch Simulator</button>
         </div>
       </div>
     `;
@@ -232,16 +399,20 @@
       switchView("plan");
     });
 
-    weakPanel.querySelector("#wk-open-cap").addEventListener("click", () => {
-      state.planSub = "capstones";
-      state.openGuides[w.recCapstone] = true;
-      switchView("plan");
+    weakPanel.querySelector("#wk-open-int").addEventListener("click", () => {
+      state.pracSub = "interactive";
+      switchView("practice");
     });
 
     weakPanel.querySelector("#wk-open-tickets").addEventListener("click", () => {
       state.pracSub = "tickets";
       state.ticketFilter = w.id;
       switchView("practice");
+    });
+
+    weakPanel.querySelector("#wk-open-matrix").addEventListener("click", () => {
+      state.matrixFilter = w.id;
+      switchView("matrices");
     });
 
     weakPanel.querySelector("#wk-open-sim").addEventListener("click", () => {
@@ -271,10 +442,11 @@
             <div class="progress-fill" style="width:${d.masteryPct}%; background:var(${d.colorVar});"></div>
           </div>
           <div class="domain-signals">
-            <span>Blueprint: <strong class="mono" style="color:var(--text-primary);">${d.bpDone}/${d.bpTotal}</strong> (${d.bpPct}%)</span>
-            <span>Hands-On Labs: <strong class="mono" style="color:var(--text-primary);">${d.labDone}/${d.labTotal}</strong> (${d.labPct}%)</span>
-            <span>P1 Tickets: <strong class="mono" style="color:var(--text-primary);">${d.ticketsDone}/${d.ticketsTotal}</strong></span>
-            <span>Quiz Accuracy: <strong class="mono" style="color:var(--text-primary);">${d.quizAttempts ? Math.round((d.quizRight / d.quizAttempts) * 100) + "%" : "—"}</strong></span>
+            <span>Blueprint: <strong class="mono" style="color:var(--text-primary);">${d.bpDone}/${d.bpTotal}</strong></span>
+            <span>Labs &amp; Checkpoints: <strong class="mono" style="color:var(--text-primary);">${d.labDone + d.cpDone}/${d.labTotal + d.cpTotal}</strong></span>
+            <span>P1 &amp; Interactive: <strong class="mono" style="color:var(--text-primary);">${d.ticketsDone + d.interactiveDone}/${d.ticketsTotal + d.interactiveTotal}</strong></span>
+            <span>Recall Accuracy: <strong class="mono" style="color:var(--text-primary);">${d.rawAccuracyPct !== null ? d.rawAccuracyPct + "%" : "—"}</strong></span>
+            ${d.box1InDomain > 0 ? `<span style="color:var(--danger); font-weight:600;">Box 1 Urgent: ${d.box1InDomain}</span>` : ""}
             ${d.mockAvg !== null ? `<span>Mock Avg: <strong class="mono" style="color:var(--text-primary);">${d.mockAvg}%</strong></span>` : ""}
           </div>
         </div>
@@ -296,12 +468,12 @@
       });
     });
 
-    // External Mock Exam Log History
+    // External & Built-In Mock Exam Log History
     const histEl = document.getElementById("ov-mock-history");
     if (!report.mockLogs.length) {
       histEl.innerHTML = `
         <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; color:var(--text-secondary); font-size:13px;">
-          <span>No practice exam attempts logged yet. Once you take <a href="https://learn.microsoft.com/en-us/credentials/certifications/azure-administrator/" target="_blank" rel="noopener">Microsoft's free AI Skills Navigator Practice Assessment</a>, log your domain percentages here so the tracker pinpoints your exact gaps.</span>
+          <span>No timed mock exam attempts logged yet. Launch the <strong>Built-In Timed Exam Simulator</strong> above (auto-logs on completion) or log your score from <a href="https://learn.microsoft.com/en-us/credentials/certifications/azure-administrator/" target="_blank" rel="noopener">Microsoft's free AI Skills Navigator Practice Assessment</a>.</span>
         </div>
       `;
     } else {
@@ -369,7 +541,7 @@
   });
 
   // ---------------------------------------------------------------------------
-  // VIEW 2: STUDY PLAN, STEP-BY-STEP GUIDES & 4 MULTI-DOMAIN CAPSTONES
+  // VIEW 2: STUDY PLAN, STEP-BY-STEP GUIDES, EXIT CHECKPOINTS & CAPSTONES
   // ---------------------------------------------------------------------------
   document.querySelectorAll("[data-plan-sub]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -383,7 +555,11 @@
     });
   });
 
-  function renderGuideDrawerHtml(guide, drawerId, linkedBpEntries) {
+  function getCheckpointsForGuideKey(guideKey) {
+    return (TOPIC_CHECKPOINTS && TOPIC_CHECKPOINTS[guideKey]) || [];
+  }
+
+  function renderGuideDrawerHtml(guide, drawerId, linkedBpEntries, guideKey) {
     const msLabLinks = (guide.msLabs || []).map(k => {
       const l = OFFICIAL_MS_LABS[k];
       if (!l) return "";
@@ -408,6 +584,55 @@
       </div>
     ` : "";
 
+    // Sprint Exit Checkpoint (2 Active-Recall Questions per Topic Guide)
+    const checkpoints = getCheckpointsForGuideKey(guideKey);
+    const cpSolvedCount = checkpoints.filter(cp => state.solvedCheckpoints && state.solvedCheckpoints[cp.id]).length;
+    const checkpointHtml = checkpoints.length ? `
+      <div style="padding:14px 16px; background:var(--bg-surface); border:1px solid ${cpSolvedCount === checkpoints.length ? "var(--success)" : "var(--border-strong)"}; border-radius:var(--radius-md); display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px;">
+          <div>
+            <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:${cpSolvedCount === checkpoints.length ? "var(--success)" : "var(--warning)"};">
+              Sprint Exit Checkpoint — Active Recall Gate (${cpSolvedCount}/${checkpoints.length} Verified)
+            </div>
+            <div style="font-size:12.5px; color:var(--text-secondary);">Prove recall on these 2 high-frequency exam traps to lock in your lab mastery score.</div>
+          </div>
+          <span class="badge ${cpSolvedCount === checkpoints.length ? "badge-success" : "badge-warning"}">${cpSolvedCount === checkpoints.length ? "✓ Recall Verified" : "Verification Pending"}</span>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          ${checkpoints.map((cp, idx) => {
+            const chosen = state.checkpointAnswers && state.checkpointAnswers[cp.id] !== undefined
+              ? state.checkpointAnswers[cp.id]
+              : (state.solvedCheckpoints && state.solvedCheckpoints[cp.id] ? cp.answer : null);
+            return `
+              <div style="padding:12px 14px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:8px;">
+                <div style="font-size:13px; font-weight:650;">Checkpoint ${idx + 1}: ${cp.q}</div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                  ${cp.options.map((opt, oi) => {
+                    let cls = "";
+                    if (chosen !== null) {
+                      if (oi === cp.answer) cls = "correct";
+                      else if (oi === chosen && oi !== cp.answer) cls = "wrong";
+                    }
+                    return `
+                      <button data-cp-pick="${cp.id}:${oi}:${drawerId}" class="option-btn ${cls}" style="padding:8px 11px; font-size:12.5px;">
+                        <span><strong class="mono" style="margin-right:6px; color:var(--text-secondary);">${String.fromCharCode(65 + oi)}.</strong>${opt}</span>
+                      </button>
+                    `;
+                  }).join("")}
+                </div>
+                ${chosen !== null ? `
+                  <div style="font-size:12px; color:var(--text-secondary); padding-top:6px; border-top:1px solid var(--border-subtle);">
+                    <strong style="color:${chosen === cp.answer ? "var(--success)" : "var(--danger)"};">${chosen === cp.answer ? "Verified:" : "Queued in Leitner Box 1:"}</strong> ${cp.why}
+                  </div>
+                ` : ""}
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    ` : "";
+
     return `
       <div class="guide-drawer">
         <div class="guide-grid">
@@ -421,7 +646,6 @@
 
           ${bpListHtml}
 
-          <!-- Official MS Hosted Lab & Doc Links -->
           <div>
             <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:8px;">Official Microsoft Hosted Lab Instructions &amp; Reference Docs</div>
             <div style="display:flex; flex-wrap:wrap; gap:6px;">
@@ -430,7 +654,6 @@
             </div>
           </div>
 
-          <!-- Exact Azure Portal Click-Path -->
           <div>
             <div style="font-size:12px; font-weight:600; color:var(--text-secondary);">Exact Azure Portal Walkthrough</div>
             <ol class="step-list">
@@ -438,7 +661,6 @@
             </ol>
           </div>
 
-          <!-- Copyable Azure CLI / Bicep Commands -->
           <div>
             <div class="code-block-wrap">
               <div class="code-block-bar">
@@ -449,19 +671,20 @@
             </div>
           </div>
 
-          <!-- Verification & Exam Takeaway Checks -->
           <div>
             <div style="font-size:12px; font-weight:600; color:var(--text-secondary);">Verification &amp; Exam Trap Checks</div>
             <ul class="step-list">
               ${(guide.verifySteps || []).map(v => `<li>${v}</li>`).join("")}
             </ul>
           </div>
+
+          ${checkpointHtml}
         </div>
       </div>
     `;
   }
 
-  function wireCopyButtons(container) {
+  function wireCopyAndCheckpoints(container, rerenderFn) {
     container.querySelectorAll("[data-copy-code]").forEach(btn => {
       btn.addEventListener("click", () => {
         const id = btn.dataset.copyCode;
@@ -472,6 +695,31 @@
           btn.textContent = "Copied ✓";
           setTimeout(() => { btn.textContent = orig; }, 1500);
         }).catch(() => {});
+      });
+    });
+
+    container.querySelectorAll("[data-cp-pick]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const [cpId, oiStr] = btn.dataset.cpPick.split(":");
+        const oi = Number(oiStr);
+        let foundCp = null;
+        Object.values(TOPIC_CHECKPOINTS).forEach(list => {
+          const match = list.find(x => x.id === cpId);
+          if (match) foundCp = match;
+        });
+        if (!foundCp) return;
+
+        if (!state.checkpointAnswers) state.checkpointAnswers = {};
+        if (!state.solvedCheckpoints) state.solvedCheckpoints = {};
+        state.checkpointAnswers[cpId] = oi;
+        const ok = oi === foundCp.answer;
+        if (ok) {
+          state.solvedCheckpoints[cpId] = true;
+          recordStudyActivity();
+        }
+        trackDomainResult(foundCp.domain, ok, cpId, false);
+        saveState();
+        rerenderFn(container);
       });
     });
   }
@@ -502,6 +750,20 @@
       renderMapSelection();
       requestAnimationFrame(drawConnections);
     }
+  }
+
+  function getGuideKeyForSprintId(sprintId) {
+    const map = {
+      w1d1: "w1_identities",   w1d2: "w1_rbac_locks",   w1d3: "w1_rbac_locks",   w1d4: "w1_policy",       w1d5: "w1_policy",
+      w2d1: "w2_vnets_peering",w2d2: "w2_vnets_peering",w2d3: "w2_nsg_udr",      w2d4: "w2_nsg_udr",      w2d5: "w2_nsg_udr",
+      w3d1: "w3_storage_core", w3d2: "w3_storage_security", w3d3: "w3_storage_security", w3d4: "w3_storage_core", w3d5: "w3_storage_security",
+      w4d1: "w4_bicep_vms",    w4d2: "w4_bicep_vms",    w4d3: "w4_vm_scale_ha",  w4d4: "w4_vm_scale_ha",  w4d5: "w4_vm_scale_ha",
+      w5d1: "w5_app_service",  w5d2: "w5_app_service",  w5d3: "w5_containers",   w5d4: "w5_containers",   w5d5: "w5_containers",
+      w6d1: "w6_lb_bastion_dns",w6d2:"w6_lb_bastion_dns",w6d3:"w6_lb_bastion_dns",w6d4:"w6_lb_bastion_dns",w6d5:"w6_lb_bastion_dns",
+      w7d1: "w7_monitor_watcher",w7d2:"w7_monitor_watcher",w7d3:"w7_monitor_watcher",w7d4:"w7_backup_asr", w7d5: "w7_backup_asr",
+      w8d1: "w8_exam_mastery", w8d2: "w8_exam_mastery", w8d3: "w8_exam_mastery", w8d4: "w8_exam_mastery", w8d5: "w8_exam_mastery"
+    };
+    return map[sprintId] || "w1_identities";
   }
 
   function renderSteadySchedule(container) {
@@ -535,9 +797,12 @@
               ${w.sprints.map(s => {
                 const isChecked = !!state.checked[s.id];
                 const guideOpen = !!state.openGuides[s.id];
+                const guideKey = getGuideKeyForSprintId(s.id);
                 const guide = getGuideForSprint(s.id);
                 const linkedBp = bpLinks.bySprintId[s.id] || [];
                 const msLabBadges = (guide.msLabs || []).map(k => OFFICIAL_MS_LABS[k] ? OFFICIAL_MS_LABS[k].code : "").filter(Boolean).join(", ");
+                const cps = getCheckpointsForGuideKey(guideKey);
+                const cpDone = cps.filter(c => state.solvedCheckpoints && state.solvedCheckpoints[c.id]).length;
                 return `
                   <div id="sprint-row-${s.id}">
                     <div class="sprint-item">
@@ -549,15 +814,16 @@
                             <span class="badge">${s.tag}</span>
                             <span class="badge badge-accent mono">MS ${msLabBadges}</span>
                             ${linkedBp.length ? `<span class="badge ${isChecked ? "badge-success" : ""}">${isChecked ? "✓ Checked" : "Auto-checks"} ${linkedBp.length} Blueprint obj.</span>` : ""}
+                            ${cps.length ? `<span class="badge ${cpDone === cps.length ? "badge-success" : "badge-warning"}">${cpDone === cps.length ? "✓ Recall Verified" : `Exit Quiz ${cpDone}/${cps.length}`}</span>` : ""}
                           </div>
                           <div style="margin-top:4px; font-size:13.5px; ${isChecked ? "text-decoration:line-through; color:var(--text-tertiary);" : ""}">${s.text}</div>
                         </div>
                       </label>
                       <button data-toggle-guide="${s.id}" class="btn btn-sm ${guideOpen ? "btn-primary" : ""}" style="flex-shrink:0;">
-                        ${guideOpen ? "Hide Guide ▲" : "Step-by-Step Guide ▼"}
+                        ${guideOpen ? "Hide Guide ▲" : "Step-by-Step Guide &amp; Quiz ▼"}
                       </button>
                     </div>
-                    ${guideOpen ? renderGuideDrawerHtml(guide, s.id, linkedBp) : ""}
+                    ${guideOpen ? renderGuideDrawerHtml(guide, s.id, linkedBp, guideKey) : ""}
                   </div>
                 `;
               }).join("")}
@@ -600,7 +866,7 @@
       });
     });
 
-    wireCopyButtons(container);
+    wireCopyAndCheckpoints(container, renderSteadySchedule);
   }
 
   function renderBlitzSchedule(container) {
@@ -631,6 +897,8 @@
               const guide = getGuideByKey(d.guide);
               const linkedBp = bpLinks.byBlitzId[d.id] || [];
               const msLabBadges = (guide.msLabs || []).map(k => OFFICIAL_MS_LABS[k] ? OFFICIAL_MS_LABS[k].code : "").filter(Boolean).join(", ");
+              const cps = getCheckpointsForGuideKey(d.guide);
+              const cpDone = cps.filter(c => state.solvedCheckpoints && state.solvedCheckpoints[c.id]).length;
               return `
                 <div>
                   <div class="sprint-item">
@@ -642,15 +910,16 @@
                           <strong style="font-size:13.5px;">${d.title}</strong>
                           <span class="badge badge-accent mono">MS ${msLabBadges}</span>
                           ${linkedBp.length ? `<span class="badge ${isChecked ? "badge-success" : ""}">${isChecked ? "✓ Checked" : "Auto-checks"} ${linkedBp.length} Blueprint obj.</span>` : ""}
+                          ${cps.length ? `<span class="badge ${cpDone === cps.length ? "badge-success" : "badge-warning"}">${cpDone === cps.length ? "✓ Recall Verified" : `Exit Quiz ${cpDone}/${cps.length}`}</span>` : ""}
                         </div>
                         <div style="margin-top:4px; font-size:13px; color:var(--text-secondary); ${isChecked ? "text-decoration:line-through;" : ""}">${d.task}</div>
                       </div>
                     </label>
                     <button data-toggle-bguide="${d.id}" class="btn btn-sm ${guideOpen ? "btn-primary" : ""}" style="flex-shrink:0;">
-                      ${guideOpen ? "Hide Guide ▲" : "Step-by-Step Guide ▼"}
+                      ${guideOpen ? "Hide Guide ▲" : "Step-by-Step Guide &amp; Quiz ▼"}
                     </button>
                   </div>
-                  ${guideOpen ? renderGuideDrawerHtml(guide, d.id, linkedBp) : ""}
+                  ${guideOpen ? renderGuideDrawerHtml(guide, d.id, linkedBp, d.guide) : ""}
                 </div>
               `;
             }).join("")}
@@ -693,7 +962,7 @@
       });
     });
 
-    wireCopyButtons(container);
+    wireCopyAndCheckpoints(container, renderBlitzSchedule);
   }
 
   function renderCapstones(container) {
@@ -802,7 +1071,7 @@
       });
     });
 
-    wireCopyButtons(container);
+    wireCopyAndCheckpoints(container, renderCapstones);
   }
 
   // Topology Map inside Study Plan
@@ -913,32 +1182,18 @@
     document.querySelectorAll("[data-prac-sub]").forEach(b => {
       b.classList.toggle("active", b.dataset.pracSub === state.pracSub);
     });
-    ["tickets", "bughunts", "simulators", "casestudies", "scavenger", "speedrun"].forEach(k => {
+    ["tickets", "interactive", "bughunts", "simulators", "casestudies", "scavenger", "speedrun"].forEach(k => {
       const el = document.getElementById("prac-" + k);
       if (el) el.classList.toggle("hidden", state.pracSub !== k);
     });
 
     if (state.pracSub === "tickets") renderIncidents();
+    else if (state.pracSub === "interactive") renderInteractiveDrills();
     else if (state.pracSub === "bughunts") renderBugHunts();
     else if (state.pracSub === "simulators") window.AZ104_SIMS.render(document.getElementById("simulators-root"));
     else if (state.pracSub === "casestudies") renderCaseStudy();
     else if (state.pracSub === "scavenger") renderScavenger();
     else if (state.pracSub === "speedrun") { renderWeaknessRadar(); renderSpeedRun(); }
-  }
-
-  function trackDomainResult(domainId, ok, cardId) {
-    if (!state.domainStats) state.domainStats = {};
-    if (!state.domainStats[domainId]) state.domainStats[domainId] = { right: 0, wrong: 0 };
-    if (ok) state.domainStats[domainId].right++;
-    else state.domainStats[domainId].wrong++;
-
-    if (cardId) {
-      if (!state.missedTraps) state.missedTraps = {};
-      if (ok) delete state.missedTraps[cardId];
-      else state.missedTraps[cardId] = (state.missedTraps[cardId] || 0) + 1;
-    }
-    saveState();
-    renderOverview();
   }
 
   function renderIncidents() {
@@ -1019,7 +1274,7 @@
           let tag = "";
           if (chosen !== null) {
             if (idx === t.answer) { cls = "correct"; tag = `<span class="badge badge-success">Correct</span>`; }
-            else if (idx === chosen && idx !== t.answer) { cls = "wrong"; tag = `<span class="badge badge-danger">Incorrect</span>`; }
+            else if (idx === chosen && idx !== t.answer) { cls = "wrong"; tag = `<span class="badge badge-danger">Queued in Leitner Box 1</span>`; }
           }
           return `
             <button data-opt="${idx}" class="option-btn ${cls}">
@@ -1048,13 +1303,439 @@
         const idx = Number(btn.dataset.opt);
         selectedOptionForCurrent = idx;
         const ok = idx === t.answer;
-        trackDomainResult(t.domain, ok, null);
+        trackDomainResult(t.domain, ok, t.id, false);
         if (ok) { state.solvedTickets[t.id] = true; recordStudyActivity(); }
         saveState();
         renderIncidents();
         renderOverview();
       });
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // PRACTICE 1B: 15 INTERACTIVE EXAM DRILLS
+  // (Order-the-Steps, Multi-Dropdown Tables, Locked Yes/No Series)
+  // ---------------------------------------------------------------------------
+  let seqPickedMap = {};     // { seqId: ["s1", "s2", ...] }
+  let seqCheckedMap = {};    // { seqId: boolean }
+  let ddSelectionsMap = {};  // { ddId: { slot1: 0, slot2: 1, slot3: 2 } }
+  let ddCheckedMap = {};     // { ddId: boolean }
+  let ynProgressMap = {};    // { ynId: { step: 0|1|2|3, answers: [bool, bool, bool] } }
+
+  document.querySelectorAll("[data-int-mode]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.intMode = btn.dataset.intMode;
+      saveState();
+      renderInteractiveDrills();
+    });
+  });
+
+  function renderInteractiveDrills() {
+    document.querySelectorAll("[data-int-mode]").forEach(b => {
+      b.classList.toggle("active", b.dataset.intMode === state.intMode);
+    });
+    const root = document.getElementById("int-drills-root");
+    if (!root) return;
+
+    if (state.intMode === "sequence") renderSequenceDrill(root);
+    else if (state.intMode === "dropdown") renderDropdownDrill(root);
+    else renderYesNoSeries(root);
+  }
+
+  function renderSequenceDrill(root) {
+    const sq = SEQUENCE_DRILLS.find(x => x.id === state.activeSeqId) || SEQUENCE_DRILLS[0];
+    state.activeSeqId = sq.id;
+    if (!seqPickedMap[sq.id]) {
+      seqPickedMap[sq.id] = state.solvedSequences && state.solvedSequences[sq.id] ? [...sq.correctOrder] : [];
+    }
+    const picked = seqPickedMap[sq.id];
+    const checked = !!seqCheckedMap[sq.id] || !!(state.solvedSequences && state.solvedSequences[sq.id]);
+    const isExact = picked.length === sq.correctOrder.length && sq.correctOrder.every((id, i) => picked[i] === id);
+    const solvedTotal = Object.values(state.solvedSequences || {}).filter(Boolean).length;
+
+    const remainingPool = sq.pool.filter(p => !picked.includes(p.id));
+
+    root.innerHTML = `
+      <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px;">
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          ${SEQUENCE_DRILLS.map(item => `
+            <button data-seq-pick="${item.id}" class="btn btn-sm ${item.id === sq.id ? "btn-primary" : ""}">
+              ${state.solvedSequences && state.solvedSequences[item.id] ? "✓ " : ""}${item.code}: ${item.domainLabel}
+            </button>
+          `).join("")}
+        </div>
+        <span class="badge mono">${solvedTotal} / ${SEQUENCE_DRILLS.length} Sequences Solved</span>
+      </div>
+
+      <div style="padding:16px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md);">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+          <span class="badge badge-accent mono">${sq.code}</span>
+          <span class="badge">${sq.domainLabel}</span>
+          <span class="badge">Select &amp; Order ${sq.requiredCount} Steps</span>
+        </div>
+        <h3 style="font-size:16px;">${sq.title}</h3>
+        <p style="font-size:13.5px; color:var(--text-secondary); margin-top:6px;">${sq.scenario}</p>
+      </div>
+
+      <div class="seq-builder">
+        <!-- Left: Available Pool -->
+        <div style="padding:14px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:10px;">
+          <div style="font-size:12.5px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Available Actions Pool (${remainingPool.length} remaining)</div>
+          ${remainingPool.length ? remainingPool.map(p => `
+            <div class="seq-step-row">
+              <span>${p.text}</span>
+              <button data-seq-add="${p.id}" class="btn btn-primary btn-sm" style="flex-shrink:0;" ${picked.length >= sq.requiredCount ? "disabled" : ""}>+ Add</button>
+            </div>
+          `).join("") : `<div style="font-size:12.5px; color:var(--text-secondary);">All candidate steps placed.</div>`}
+        </div>
+
+        <!-- Right: Ordered Sequence -->
+        <div style="padding:14px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:12.5px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Your Ordered Sequence (${picked.length} / ${sq.requiredCount})</span>
+            <button id="seq-reset-btn" class="btn btn-sm">Clear &amp; Reset</button>
+          </div>
+          ${picked.length ? picked.map((pid, idx) => {
+            const stepObj = sq.pool.find(x => x.id === pid);
+            let cls = "";
+            if (checked) {
+              cls = sq.correctOrder[idx] === pid ? "correct" : "wrong";
+            }
+            return `
+              <div class="seq-step-row ${cls}">
+                <div style="display:flex; align-items:flex-start; gap:8px;">
+                  <span class="badge mono">Step ${idx + 1}</span>
+                  <span>${stepObj ? stepObj.text : pid}</span>
+                </div>
+                <div style="display:flex; gap:4px; flex-shrink:0;">
+                  <button data-seq-up="${idx}" class="btn btn-sm" style="padding:2px 7px;" ${idx === 0 ? "disabled" : ""}>↑</button>
+                  <button data-seq-down="${idx}" class="btn btn-sm" style="padding:2px 7px;" ${idx === picked.length - 1 ? "disabled" : ""}>↓</button>
+                  <button data-seq-rem="${idx}" class="btn btn-sm" style="padding:2px 7px;">✕</button>
+                </div>
+              </div>
+            `;
+          }).join("") : `<div style="padding:20px; text-align:center; color:var(--text-tertiary); font-size:13px;">Click <strong>+ Add</strong> on ${sq.requiredCount} steps from the pool in exact execution order.</div>`}
+
+          <div style="display:flex; justify-content:flex-end; padding-top:6px;">
+            <button id="seq-verify-btn" class="btn btn-primary" ${picked.length !== sq.requiredCount ? "disabled" : ""}>Verify ${sq.requiredCount}-Step Sequence</button>
+          </div>
+        </div>
+      </div>
+
+      ${checked ? `
+        <div style="padding:16px; background:var(--bg-canvas); border:1px solid ${isExact ? "var(--success)" : "var(--warning)"}; border-radius:var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+            <span style="font-size:12px; font-weight:700; text-transform:uppercase; color:${isExact ? "var(--success)" : "var(--warning)"};">
+              ${isExact ? "✓ Exact Sequence Verified" : "Sequence Mismatch — Check Highlighted Steps"}
+            </span>
+            <a href="${sq.msUrl}" target="_blank" rel="noopener" style="font-size:12.5px; font-weight:600;">↗ Official Microsoft Learn Procedure</a>
+          </div>
+          <p style="font-size:13.5px;">${sq.explanation}</p>
+        </div>
+      ` : ""}
+    `;
+
+    root.querySelectorAll("[data-seq-pick]").forEach(b => {
+      b.addEventListener("click", () => {
+        state.activeSeqId = b.dataset.seqPick;
+        saveState();
+        renderSequenceDrill(root);
+      });
+    });
+
+    root.querySelectorAll("[data-seq-add]").forEach(b => {
+      b.addEventListener("click", () => {
+        if (picked.length < sq.requiredCount) {
+          picked.push(b.dataset.seqAdd);
+          seqCheckedMap[sq.id] = false;
+          renderSequenceDrill(root);
+        }
+      });
+    });
+
+    root.querySelectorAll("[data-seq-up]").forEach(b => {
+      b.addEventListener("click", () => {
+        const i = Number(b.dataset.seqUp);
+        if (i > 0) {
+          [picked[i - 1], picked[i]] = [picked[i], picked[i - 1]];
+          seqCheckedMap[sq.id] = false;
+          renderSequenceDrill(root);
+        }
+      });
+    });
+
+    root.querySelectorAll("[data-seq-down]").forEach(b => {
+      b.addEventListener("click", () => {
+        const i = Number(b.dataset.seqDown);
+        if (i < picked.length - 1) {
+          [picked[i + 1], picked[i]] = [picked[i], picked[i + 1]];
+          seqCheckedMap[sq.id] = false;
+          renderSequenceDrill(root);
+        }
+      });
+    });
+
+    root.querySelectorAll("[data-seq-rem]").forEach(b => {
+      b.addEventListener("click", () => {
+        picked.splice(Number(b.dataset.seqRem), 1);
+        seqCheckedMap[sq.id] = false;
+        renderSequenceDrill(root);
+      });
+    });
+
+    root.querySelector("#seq-reset-btn").addEventListener("click", () => {
+      seqPickedMap[sq.id] = [];
+      seqCheckedMap[sq.id] = false;
+      renderSequenceDrill(root);
+    });
+
+    root.querySelector("#seq-verify-btn").addEventListener("click", () => {
+      seqCheckedMap[sq.id] = true;
+      const ok = picked.length === sq.correctOrder.length && sq.correctOrder.every((id, i) => picked[i] === id);
+      if (ok) {
+        if (!state.solvedSequences) state.solvedSequences = {};
+        state.solvedSequences[sq.id] = true;
+        recordStudyActivity();
+      }
+      trackDomainResult(sq.domain, ok, null, false);
+      saveState();
+      renderSequenceDrill(root);
+    });
+  }
+
+  function renderDropdownDrill(root) {
+    const dd = DROPDOWN_DRILLS.find(x => x.id === state.activeDdId) || DROPDOWN_DRILLS[0];
+    state.activeDdId = dd.id;
+    const alreadySolved = !!(state.solvedDropdowns && state.solvedDropdowns[dd.id]);
+    if (!ddSelectionsMap[dd.id]) {
+      const init = {};
+      dd.slots.forEach(s => { init[s.id] = alreadySolved ? s.answer : 0; });
+      ddSelectionsMap[dd.id] = init;
+    }
+    const sel = ddSelectionsMap[dd.id];
+    const checked = !!ddCheckedMap[dd.id] || alreadySolved;
+    const allCorrect = dd.slots.every(s => Number(sel[s.id]) === s.answer);
+    const solvedTotal = Object.values(state.solvedDropdowns || {}).filter(Boolean).length;
+
+    root.innerHTML = `
+      <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px;">
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          ${DROPDOWN_DRILLS.map(item => `
+            <button data-dd-pick="${item.id}" class="btn btn-sm ${item.id === dd.id ? "btn-primary" : ""}">
+              ${state.solvedDropdowns && state.solvedDropdowns[item.id] ? "✓ " : ""}${item.code}: ${item.domainLabel}
+            </button>
+          `).join("")}
+        </div>
+        <span class="badge mono">${solvedTotal} / ${DROPDOWN_DRILLS.length} Hot-Area Tables Solved</span>
+      </div>
+
+      <div style="padding:16px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="badge badge-accent mono">${dd.code}</span>
+          <span class="badge">${dd.domainLabel}</span>
+          <span class="badge">3-Slot Configuration Evaluation</span>
+        </div>
+        <h3 style="font-size:16px;">${dd.title}</h3>
+        <div class="code-block-wrap">
+          <div class="code-block-bar"><span>Environment / Template Context</span></div>
+          <pre class="code-pre">${escapeHtml(dd.context)}</pre>
+        </div>
+        <div style="font-weight:650; font-size:13.5px;">${dd.prompt}</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        ${dd.slots.map(s => {
+          const pickedIdx = Number(sel[s.id] || 0);
+          const slotOk = pickedIdx === s.answer;
+          return `
+            <div style="padding:14px 16px; background:var(--bg-canvas); border:1px solid ${!checked ? "var(--border-subtle)" : (slotOk ? "var(--success)" : "var(--danger)")}; border-radius:var(--radius-md); display:flex; flex-direction:column; gap:8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="font-size:13px; font-weight:650;">${s.label}</span>
+                ${checked ? `<span class="badge ${slotOk ? "badge-success" : "badge-danger"}">${slotOk ? "✓ Correct Slot" : "✕ Incorrect"}</span>` : ""}
+              </div>
+              <select data-dd-slot="${s.id}" class="select" style="width:100%;">
+                ${s.options.map((opt, oi) => `<option value="${oi}" ${pickedIdx === oi ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("")}
+              </select>
+              ${checked && !slotOk ? `<div style="font-size:12px; color:var(--success);">Expected: <strong>${escapeHtml(s.options[s.answer])}</strong></div>` : ""}
+            </div>
+          `;
+        }).join("")}
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button id="dd-evaluate-btn" class="btn btn-primary">Evaluate All 3 Dropdown Slots</button>
+      </div>
+
+      ${checked ? `
+        <div style="padding:16px; background:var(--bg-canvas); border:1px solid ${allCorrect ? "var(--success)" : "var(--warning)"}; border-radius:var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+            <span style="font-size:12px; font-weight:700; text-transform:uppercase; color:${allCorrect ? "var(--success)" : "var(--warning)"};">
+              ${allCorrect ? "✓ All 3/3 Configuration Slots Verified" : "Review Slot Breakdown"}
+            </span>
+            <a href="${dd.msUrl}" target="_blank" rel="noopener" style="font-size:12.5px; font-weight:600;">↗ Verify in Official MS Learn Docs</a>
+          </div>
+          <p style="font-size:13.5px;">${dd.explanation}</p>
+        </div>
+      ` : ""}
+    `;
+
+    root.querySelectorAll("[data-dd-pick]").forEach(b => {
+      b.addEventListener("click", () => {
+        state.activeDdId = b.dataset.ddPick;
+        saveState();
+        renderDropdownDrill(root);
+      });
+    });
+
+    root.querySelectorAll("[data-dd-slot]").forEach(selEl => {
+      selEl.addEventListener("change", e => {
+        ddSelectionsMap[dd.id][selEl.dataset.ddSlot] = Number(e.target.value);
+        ddCheckedMap[dd.id] = false;
+      });
+    });
+
+    root.querySelector("#dd-evaluate-btn").addEventListener("click", () => {
+      ddCheckedMap[dd.id] = true;
+      const ok = dd.slots.every(s => Number(ddSelectionsMap[dd.id][s.id]) === s.answer);
+      if (ok) {
+        if (!state.solvedDropdowns) state.solvedDropdowns = {};
+        state.solvedDropdowns[dd.id] = true;
+        recordStudyActivity();
+      }
+      trackDomainResult(dd.domain, ok, null, false);
+      saveState();
+      renderDropdownDrill(root);
+    });
+  }
+
+  function renderYesNoSeries(root) {
+    const yn = YESNO_SERIES.find(x => x.id === state.activeYnId) || YESNO_SERIES[0];
+    state.activeYnId = yn.id;
+    if (!ynProgressMap[yn.id]) {
+      ynProgressMap[yn.id] = { step: 0, answers: [] };
+    }
+    const prog = ynProgressMap[yn.id];
+    const solvedTotal = Object.values(state.solvedYesNo || {}).filter(Boolean).length;
+    const isFinished = prog.step >= yn.solutions.length;
+
+    root.innerHTML = `
+      <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px;">
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          ${YESNO_SERIES.map(item => `
+            <button data-yn-pick="${item.id}" class="btn btn-sm ${item.id === yn.id ? "btn-primary" : ""}">
+              ${state.solvedYesNo && state.solvedYesNo[item.id] ? "✓ " : ""}${item.code}: ${item.domainLabel}
+            </button>
+          `).join("")}
+        </div>
+        <span class="badge mono">${solvedTotal} / ${YESNO_SERIES.length} Locked Series Completed</span>
+      </div>
+
+      <div style="padding:16px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="badge badge-warning mono">${yn.code} • NON-REVERTIBLE EXAM FORMAT</span>
+            <span class="badge">${yn.domainLabel}</span>
+          </div>
+          <span class="mono" style="font-size:12px; color:var(--text-secondary);">
+            ${isFinished ? "Series Complete (3/3 Locked)" : `Screen ${prog.step + 1} of 3 (Cannot go back after locking!)`}
+          </span>
+        </div>
+        <h3 style="font-size:16px;">${yn.title}</h3>
+        <p style="font-size:13.5px; color:var(--text-secondary); white-space:pre-line;">${escapeHtml(yn.problem)}</p>
+      </div>
+
+      ${!isFinished ? (() => {
+        const curSol = yn.solutions[prog.step];
+        return `
+          <div style="padding:18px; background:var(--bg-canvas); border:1px solid var(--border-strong); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:14px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <span class="badge badge-accent mono">PROPOSED SOLUTION ${curSol.num} OF 3</span>
+              <span style="font-size:12px; color:var(--text-tertiary);">Once you click Lock, this screen cannot be revisited</span>
+            </div>
+            <div style="font-size:14.5px; font-weight:600; line-height:1.55;">${curSol.proposed}</div>
+            <div style="font-size:13px; color:var(--text-secondary); font-weight:600;">Does this proposed solution meet the required goal?</div>
+            <div class="topo-grid-2">
+              <button data-yn-ans="true" class="option-btn">
+                <span><strong>Yes</strong> — This proposed solution meets all requirements</span>
+                <span class="badge">Lock &amp; Next →</span>
+              </button>
+              <button data-yn-ans="false" class="option-btn">
+                <span><strong>No</strong> — This proposed solution fails at least one requirement</span>
+                <span class="badge">Lock &amp; Next →</span>
+              </button>
+            </div>
+          </div>
+        `;
+      })() : (() => {
+        const correctCount = yn.solutions.filter((s, idx) => prog.answers[idx] === s.meetsGoal).length;
+        return `
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:14px 16px; background:var(--bg-canvas); border:1px solid ${correctCount === 3 ? "var(--success)" : "var(--warning)"}; border-radius:var(--radius-md);">
+              <div>
+                <div style="font-size:14px; font-weight:700; color:${correctCount === 3 ? "var(--success)" : "var(--warning)"};">
+                  Locked Series Post-Mortem: ${correctCount} / 3 Proposed Solutions Evaluated Correctly
+                </div>
+                <div style="font-size:12.5px; color:var(--text-secondary);">Compare the 3 proposed architectures side-by-side below to see what made each one succeed or fail.</div>
+              </div>
+              <button id="yn-retry-btn" class="btn btn-sm">Replay Series</button>
+            </div>
+
+            ${yn.solutions.map((s, idx) => {
+              const userAns = prog.answers[idx];
+              const ok = userAns === s.meetsGoal;
+              return `
+                <div style="padding:14px 16px; background:var(--bg-canvas); border:1px solid ${ok ? "var(--success)" : "var(--danger)"}; border-radius:var(--radius-md); display:flex; flex-direction:column; gap:8px;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                    <span class="mono" style="font-size:12px; font-weight:700;">Solution ${s.num} • Official Answer: <strong style="color:${s.meetsGoal ? "var(--success)" : "var(--danger)"};">${s.meetsGoal ? "YES (Meets Goal)" : "NO (Fails Goal)"}</strong></span>
+                    <span class="badge ${ok ? "badge-success" : "badge-danger"}">Your Pick: ${userAns ? "Yes" : "No"} (${ok ? "✓ Correct" : "✕ Missed"})</span>
+                  </div>
+                  <div style="font-size:13px; color:var(--text-secondary);">${s.proposed}</div>
+                  <div style="font-size:13px; padding-top:6px; border-top:1px solid var(--border-subtle);">${s.why}</div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+      })()}
+    `;
+
+    root.querySelectorAll("[data-yn-pick]").forEach(b => {
+      b.addEventListener("click", () => {
+        state.activeYnId = b.dataset.ynPick;
+        saveState();
+        renderYesNoSeries(root);
+      });
+    });
+
+    root.querySelectorAll("[data-yn-ans]").forEach(b => {
+      b.addEventListener("click", () => {
+        const ans = b.dataset.ynAns === "true";
+        const curSol = yn.solutions[prog.step];
+        const ok = ans === curSol.meetsGoal;
+        prog.answers.push(ans);
+        prog.step++;
+        trackDomainResult(yn.domain, ok, null, false);
+
+        if (prog.step >= yn.solutions.length) {
+          const allOk = yn.solutions.every((s, idx) => prog.answers[idx] === s.meetsGoal);
+          if (allOk) {
+            if (!state.solvedYesNo) state.solvedYesNo = {};
+            state.solvedYesNo[yn.id] = true;
+            recordStudyActivity();
+          }
+          saveState();
+        }
+        renderYesNoSeries(root);
+      });
+    });
+
+    const retryBtn = root.querySelector("#yn-retry-btn");
+    if (retryBtn) {
+      retryBtn.addEventListener("click", () => {
+        ynProgressMap[yn.id] = { step: 0, answers: [] };
+        renderYesNoSeries(root);
+      });
+    }
   }
 
   function renderBugHunts() {
@@ -1132,11 +1813,14 @@
           const idx = Number(btn.dataset.line);
           if (bugPicks.has(idx)) bugPicks.delete(idx);
           else if (bugPicks.size < 2) bugPicks.add(idx);
-          if (bugPicks.size === 2 && bh.bugLines.every(l => bugPicks.has(l))) {
-            state.solvedBugHunts[bh.id] = true;
-            recordStudyActivity();
-            saveState();
-            renderOverview();
+          if (bugPicks.size === 2) {
+            const matched = bh.bugLines.every(l => bugPicks.has(l));
+            trackDomainResult(bh.domain, matched, null, false);
+            if (matched) {
+              state.solvedBugHunts[bh.id] = true;
+              recordStudyActivity();
+              saveState();
+            }
           }
           renderBugHunts();
         });
@@ -1177,7 +1861,7 @@
               <div style="padding:16px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:10px;">
                 <div style="display:flex; justify-content:space-between; font-size:12px;">
                   <span class="mono" style="color:var(--text-secondary); font-weight:700;">Question ${qi + 1} • ${q.type}</span>
-                  ${answered ? `<span class="badge ${ans === q.answer ? "badge-success" : "badge-danger"}">${ans === q.answer ? "Correct" : "Review"}</span>` : ""}
+                  ${answered ? `<span class="badge ${ans === q.answer ? "badge-success" : "badge-danger"}">${ans === q.answer ? "Correct" : "Queued in Leitner Box 1"}</span>` : ""}
                 </div>
                 <div style="font-weight:650; font-size:13.5px;">${q.q}</div>
                 <div style="display:flex; flex-direction:column; gap:6px;">
@@ -1201,8 +1885,13 @@
     root.querySelectorAll("[data-cs-pick]").forEach(b => b.addEventListener("click", () => { state.activeCaseStudy = b.dataset.csPick; state.activeCaseTab = "Overview"; saveState(); renderCaseStudy(); }));
     root.querySelectorAll("[data-cs-tab]").forEach(b => b.addEventListener("click", () => { state.activeCaseTab = b.dataset.csTab; saveState(); renderCaseStudy(); }));
     root.querySelectorAll("[data-csq]").forEach(b => b.addEventListener("click", () => {
-      const [qid, oi] = b.dataset.csq.split(":");
-      state.solvedCaseQ[qid] = Number(oi);
+      const [qid, oiStr] = b.dataset.csq.split(":");
+      const oi = Number(oiStr);
+      const qObj = cs.questions.find(x => x.id === qid);
+      state.solvedCaseQ[qid] = oi;
+      if (qObj) {
+        trackDomainResult(cs.id === "cs1" ? "compute" : "identity", oi === qObj.answer, qid, false);
+      }
       recordStudyActivity();
       saveState();
       renderCaseStudy();
@@ -1276,8 +1965,11 @@
     });
   }
 
-  // 60s Speed Run & Spaced Repetition Queue
+  // ---------------------------------------------------------------------------
+  // 60s SPEED RUN & 3-BOX LEITNER SPACED REPETITION QUEUE
+  // ---------------------------------------------------------------------------
   let srMode = "arcade", srRunning = false, srTimeLeft = 60, srScore = 0, srStreak = 0, srDeck = [], srIndex = 0, srTimer = null, srLastFeedback = null;
+  let leitnerCursor = 0;
 
   function shuffle(arr) {
     const a = [...arr];
@@ -1285,16 +1977,34 @@
     return a;
   }
 
+  function getDueLeitnerQueue() {
+    const allItems = window.AZ104_READINESS.getLeitnerItems(state);
+    // Prioritize Box 1 (Urgent, streak 0) first, then Box 2 (Reinforcing, streak 1)
+    return allItems
+      .filter(it => it.box === 1 || it.box === 2)
+      .sort((a, b) => a.box - b.box);
+  }
+
   function renderWeaknessRadar() {
     const el = document.getElementById("weakness-radar");
     if (!el) return;
-    const missedIds = Object.keys(state.missedTraps || {});
+    const allItems = window.AZ104_READINESS.getLeitnerItems(state);
+    const box1Count = allItems.filter(i => i.box === 1).length;
+    const box2Count = allItems.filter(i => i.box === 2).length;
+    const box3Count = allItems.filter(i => i.box === 3).length;
+    const dueCount = box1Count + box2Count;
+
     el.innerHTML = `
       <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding-bottom:12px; border-bottom:1px solid var(--border-subtle);">
-        <span style="font-size:13px; color:var(--text-secondary);">Spaced-Repetition Queue: <strong style="color:var(--text-primary);">${missedIds.length} missed trap(s)</strong> • Personal Best: <strong class="mono" style="color:var(--text-primary);">${state.bestSpeedRun || 0}</strong></span>
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12.5px;">
+          <span class="badge ${box1Count > 0 ? "badge-danger" : ""}">Box 1 Urgent (0/2): <strong class="mono" style="margin-left:4px;">${box1Count}</strong></span>
+          <span class="badge ${box2Count > 0 ? "badge-warning" : ""}">Box 2 Reinforcing (1/2): <strong class="mono" style="margin-left:4px;">${box2Count}</strong></span>
+          <span class="badge badge-success">Box 3 Graduated (2/2): <strong class="mono" style="margin-left:4px;">${box3Count}</strong></span>
+          <span style="color:var(--text-secondary); margin-left:4px;">Best 60s Run: <strong class="mono" style="color:var(--text-primary);">${state.bestSpeedRun || 0}</strong></span>
+        </div>
         <div class="segmented">
           <button id="sr-mode-arcade" class="seg-btn ${srMode === "arcade" ? "active" : ""}">60s Speed Run (36 Traps)</button>
-          <button id="sr-mode-review" class="seg-btn ${srMode === "review" ? "active" : ""}">Missed-Trap Rematch (${missedIds.length})</button>
+          <button id="sr-mode-review" class="seg-btn ${srMode === "review" ? "active" : ""}">Leitner Review Queue (${dueCount} due)</button>
         </div>
       </div>
     `;
@@ -1303,14 +2013,13 @@
     });
     el.querySelector("#sr-mode-review").addEventListener("click", () => {
       clearInterval(srTimer); srRunning = false; srMode = "review"; srLastFeedback = null;
-      srDeck = SPEEDRUN_CARDS.filter(c => state.missedTraps && state.missedTraps[c.id]);
-      srIndex = 0;
+      leitnerCursor = 0;
       renderWeaknessRadar(); renderSpeedRun();
     });
   }
 
   function updateSRHud() {
-    document.getElementById("sr-time").textContent = srMode === "review" ? "∞" : `${srTimeLeft}s`;
+    document.getElementById("sr-time").textContent = srMode === "review" ? "Leitner" : `${srTimeLeft}s`;
     document.getElementById("sr-score").textContent = srScore;
     document.getElementById("sr-streak").textContent = srStreak;
   }
@@ -1321,33 +2030,51 @@
     updateSRHud();
 
     if (srMode === "review") {
-      const remaining = SPEEDRUN_CARDS.filter(c => state.missedTraps && state.missedTraps[c.id]);
-      if (!remaining.length) {
+      const dueList = getDueLeitnerQueue();
+      if (!dueList.length) {
         stage.innerHTML = `
           <div style="padding:28px; text-align:center; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md);">
-            <div style="font-size:16px; font-weight:700; color:var(--success);">Missed-Trap Queue Is Clear</div>
-            <p style="font-size:13px; color:var(--text-secondary); margin-top:4px;">Any trap you miss during the 60s Speed Run automatically lands here until you answer it correctly.</p>
+            <div style="font-size:16px; font-weight:700; color:var(--success);">Leitner Box 1 &amp; Box 2 Queues Are Clear!</div>
+            <p style="font-size:13px; color:var(--text-secondary); margin-top:4px;">Every missed trap, P1 incident, case study question, or sprint checkpoint automatically enters Box 1 and requires 2 consecutive correct reviews to graduate to Box 3.</p>
           </div>
         `;
         return;
       }
-      const card = remaining[0];
+      const leitnerEntry = dueList[leitnerCursor % dueList.length];
+      const card = lookupReviewableItem(leitnerEntry.id) || SPEEDRUN_CARDS[0];
+
       stage.innerHTML = `
         <div style="padding:20px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:14px;">
-          <div class="mono" style="font-size:11.5px; color:var(--warning); font-weight:700;">REMATCH QUEUE • ${remaining.length} REMAINING</div>
-          <div style="font-size:16px; font-weight:650;">${card.prompt}</div>
-          <div class="topo-grid-2">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <span class="badge ${leitnerEntry.box === 1 ? "badge-danger" : "badge-warning"} mono">
+              LEITNER BOX ${leitnerEntry.box} (${leitnerEntry.streak || 0}/2 STREAK) • ${card.type.toUpperCase()}
+            </span>
+            <span class="mono" style="font-size:12px; color:var(--text-secondary);">${dueList.length} item(s) due for graduation</span>
+          </div>
+          <div style="font-size:15.5px; font-weight:650; white-space:pre-line;">${escapeHtml(card.prompt)}</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
             ${card.choices.map((c, i) => `<button data-rev-pick="${i}" class="option-btn">${c}</button>`).join("")}
           </div>
-          ${srLastFeedback ? `<div style="font-size:12.5px; color:var(--text-secondary); padding-top:8px; border-top:1px solid var(--border-subtle);"><strong style="color:${srLastFeedback.ok ? "var(--success)" : "var(--danger)"}">${srLastFeedback.ok ? "Cleared!" : "Still in queue:"}</strong> ${srLastFeedback.why}</div>` : ""}
+          ${srLastFeedback ? `
+            <div style="font-size:12.5px; color:var(--text-secondary); padding-top:8px; border-top:1px solid var(--border-subtle);">
+              <strong style="color:${srLastFeedback.ok ? "var(--success)" : "var(--danger)"}">${srLastFeedback.statusMsg}</strong> ${srLastFeedback.why}
+            </div>
+          ` : ""}
         </div>
       `;
       stage.querySelectorAll("[data-rev-pick]").forEach(btn => {
         btn.addEventListener("click", () => {
           const ok = Number(btn.dataset.revPick) === card.answer;
-          trackDomainResult(card.domain, ok, card.id);
-          if (ok) recordStudyActivity();
-          srLastFeedback = { ok, why: card.why };
+          const prevBox = leitnerEntry.box;
+          trackDomainResult(card.domain, ok, card.id, true);
+          if (ok) {
+            recordStudyActivity();
+            leitnerCursor++;
+          }
+          const statusMsg = ok
+            ? (prevBox === 1 ? "Promoted to Box 2 (1/2 Streak — 1 more right answer graduates it!):" : "Graduated to Box 3 (2/2 Streak — Locked In!):")
+            : "Reset to Box 1 (0/2 Streak):";
+          srLastFeedback = { ok, statusMsg, why: card.why };
           renderWeaknessRadar();
           renderSpeedRun();
         });
@@ -1359,7 +2086,7 @@
       stage.innerHTML = `
         <div style="padding:28px; text-align:center; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; align-items:center; gap:12px;">
           <div style="font-size:16.5px; font-weight:700;">Defuse 36 High-Frequency AZ-104 Exam Traps in 60 Seconds</div>
-          <p style="font-size:13px; color:var(--text-secondary); max-width:520px;">Every answer calibrates your per-domain quiz accuracy in Overview, and any miss is queued for spaced repetition.</p>
+          <p style="font-size:13px; color:var(--text-secondary); max-width:540px;">Every answer calibrates your per-domain recall accuracy in Overview, and any miss enters Leitner Box 1 (requiring a 2x streak to graduate).</p>
           <button id="sr-start-btn" class="btn btn-primary">Start 60-Second Run</button>
         </div>
       `;
@@ -1371,7 +2098,7 @@
       stage.innerHTML = `
         <div style="padding:28px; text-align:center; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; align-items:center; gap:12px;">
           <div style="font-size:18px; font-weight:700;">Time's Up — Final Score: ${srScore}</div>
-          <p style="font-size:13px; color:var(--text-secondary);">Personal Best: <strong>${state.bestSpeedRun || 0}</strong> • Switch to Missed-Trap Rematch above to clear any misses.</p>
+          <p style="font-size:13px; color:var(--text-secondary);">Personal Best: <strong>${state.bestSpeedRun || 0}</strong> • Switch to Leitner Review Queue above to promote Box 1 &amp; Box 2 items.</p>
           <button id="sr-restart-btn" class="btn btn-primary">Play Again (Shuffle)</button>
         </div>
       `;
@@ -1389,7 +2116,7 @@
         </div>
         ${srLastFeedback ? `
           <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:12.5px; padding-top:8px; border-top:1px solid var(--border-subtle);">
-            <span><strong style="color:${srLastFeedback.ok ? "var(--success)" : "var(--danger)"}">${srLastFeedback.ok ? "Correct:" : "Queued for review:"}</strong> ${srLastFeedback.why}</span>
+            <span><strong style="color:${srLastFeedback.ok ? "var(--success)" : "var(--danger)"}">${srLastFeedback.ok ? "Correct:" : "Sent to Leitner Box 1:"}</strong> ${srLastFeedback.why}</span>
             <a href="${srLastFeedback.url}" target="_blank" rel="noopener">↗ MS Docs</a>
           </div>
         ` : ""}
@@ -1399,7 +2126,7 @@
     stage.querySelectorAll("[data-sr-pick]").forEach(btn => {
       btn.addEventListener("click", () => {
         const ok = Number(btn.dataset.srPick) === card.answer;
-        trackDomainResult(card.domain, ok, card.id);
+        trackDomainResult(card.domain, ok, card.id, false);
         if (ok) {
           srScore++; srStreak++;
           if (srScore > (state.bestSpeedRun || 0)) { state.bestSpeedRun = srScore; saveState(); }
@@ -1433,7 +2160,648 @@
   }
 
   // ---------------------------------------------------------------------------
-  // VIEW 4: OFFICIAL MICROSOFT LEARN STUDY GUIDE BLUEPRINT (81/81)
+  // VIEW 4: BUILT-IN TIMED AZ-104 EXAM SIMULATOR
+  // Supports 15Q Timed Boss Sprint (22m), 35Q Full Dress Rehearsal (52m),
+  // and 12Q Weakest-Domain Surgical Mock (18m)
+  // Auto-logs domain percentages to Overview & queues misses in Leitner Box 1
+  // ---------------------------------------------------------------------------
+  let examSim = {
+    status: "lobby",      // "lobby" | "running" | "report"
+    modeLabel: "",
+    questions: [],
+    currentIndex: 0,
+    answers: {},          // { qIndex: number }
+    flagged: {},          // { qIndex: true }
+    secondsLeft: 0,
+    totalSeconds: 0,
+    timerId: null,
+    msLearnActive: false,
+    msLearnSeconds: 0,
+    msLearnTimerId: null,
+    lastReport: null
+  };
+
+  function buildUnifiedQuestionPool() {
+    const pool = [];
+    // 1. All 20 P1 Tickets
+    TICKETS.forEach(t => {
+      pool.push({
+        uid: t.id,
+        domain: t.domain,
+        format: `Scenario (${t.code})`,
+        stem: `${t.title}\n\n${t.symptom}\n\n${t.question}`,
+        options: t.options,
+        answer: t.answer,
+        why: t.explanation,
+        url: t.msUrl
+      });
+    });
+    // 2. All 24 Sprint Checkpoints
+    Object.values(TOPIC_CHECKPOINTS).forEach(list => {
+      list.forEach(cp => {
+        pool.push({
+          uid: cp.id,
+          domain: cp.domain,
+          format: "Blueprint Checkpoint",
+          stem: cp.q,
+          options: cp.options,
+          answer: cp.answer,
+          why: cp.why,
+          url: "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-104"
+        });
+      });
+    });
+    // 3. All 8 Case Study Questions (with case summary context)
+    CASE_STUDIES.forEach(cs => {
+      cs.questions.forEach(cq => {
+        pool.push({
+          uid: cq.id,
+          domain: cs.id === "cs1" ? "compute" : "identity",
+          format: `Case Study (${cs.title.split(":")[0]})`,
+          stem: `[Case Context] ${cs.tabs["Current Environment"]}\n${cs.tabs["Planned Changes"]}\n\nQuestion: ${cq.q}`,
+          options: cq.options,
+          answer: cq.answer,
+          why: cq.why,
+          url: "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-104"
+        });
+      });
+    });
+    // 4. Multi-Dropdown slots flattened as high-yield scenario items
+    DROPDOWN_DRILLS.forEach(dd => {
+      dd.slots.forEach((slot, si) => {
+        pool.push({
+          uid: `${dd.id}_${slot.id}`,
+          domain: dd.domain,
+          format: `Hot-Area Config (${dd.code} #${si + 1})`,
+          stem: `${dd.title}\n\n${dd.context}\n\n${slot.label}`,
+          options: slot.options,
+          answer: slot.answer,
+          why: dd.explanation,
+          url: dd.msUrl
+        });
+      });
+    });
+    // 5. Locked Yes/No Series items
+    YESNO_SERIES.forEach(yn => {
+      yn.solutions.forEach(sol => {
+        pool.push({
+          uid: sol.id,
+          domain: yn.domain,
+          format: `Yes/No Scenario (${yn.code})`,
+          stem: `${yn.problem}\n\nProposed Solution: ${sol.proposed}\n\nDoes this meet the goal?`,
+          options: [
+            "Yes — This proposed solution meets all requirements",
+            "No — This proposed solution fails at least one requirement"
+          ],
+          answer: sol.meetsGoal ? 0 : 1,
+          why: sol.why,
+          url: "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-104"
+        });
+      });
+    });
+    // 6. High-yield Speed Run traps
+    SPEEDRUN_CARDS.forEach(sr => {
+      pool.push({
+        uid: sr.id,
+        domain: sr.domain,
+        format: "Rapid Trap Verification",
+        stem: sr.prompt,
+        options: sr.choices,
+        answer: sr.answer,
+        why: sr.why,
+        url: sr.url
+      });
+    });
+    return pool;
+  }
+
+  function startExamSession(mode) {
+    clearInterval(examSim.timerId);
+    clearInterval(examSim.msLearnTimerId);
+
+    const allPool = shuffle(buildUnifiedQuestionPool());
+    let picked = [];
+    let label = "";
+
+    if (mode === "weakest") {
+      const report = window.AZ104_READINESS.compute(state);
+      const weakDom = report.weakest.id;
+      picked = allPool.filter(q => q.domain === weakDom).slice(0, 12);
+      label = `Surgical Mock: ${report.weakest.shortName} (12Q)`;
+    } else {
+      const targetCount = mode === "full" ? 35 : 15;
+      label = mode === "full" ? "Built-In 35Q AZ-104 Dress Rehearsal" : "Built-In 15Q Timed Boss Sprint";
+      // Pick proportional to AZ-104 domain weights
+      const quotas = mode === "full"
+        ? { identity: 8, compute: 8, networking: 7, storage: 7, monitor: 5 }
+        : { identity: 4, compute: 4, networking: 3, storage: 2, monitor: 2 };
+      Object.entries(quotas).forEach(([dom, count]) => {
+        const domQuestions = allPool.filter(q => q.domain === dom).slice(0, count);
+        picked.push(...domQuestions);
+      });
+      picked = shuffle(picked).slice(0, targetCount);
+    }
+
+    const totalSecs = picked.length * 90; // 90 seconds per question real exam pace
+    examSim = {
+      status: "running",
+      modeLabel: label,
+      questions: picked,
+      currentIndex: 0,
+      answers: {},
+      flagged: {},
+      secondsLeft: totalSecs,
+      totalSeconds: totalSecs,
+      timerId: null,
+      msLearnActive: false,
+      msLearnSeconds: 0,
+      msLearnTimerId: null,
+      lastReport: null
+    };
+
+    examSim.timerId = setInterval(() => {
+      examSim.secondsLeft--;
+      const clockEl = document.getElementById("es-clock-readout");
+      if (clockEl) {
+        const m = String(Math.floor(Math.max(0, examSim.secondsLeft) / 60)).padStart(2, "0");
+        const s = String(Math.max(0, examSim.secondsLeft) % 60).padStart(2, "0");
+        clockEl.textContent = `${m}:${s}`;
+      }
+      if (examSim.secondsLeft <= 0) {
+        submitExamSession();
+      }
+    }, 1000);
+
+    renderExamSim();
+  }
+
+  function toggleMsLearnTimer() {
+    if (examSim.msLearnActive) {
+      clearInterval(examSim.msLearnTimerId);
+      examSim.msLearnTimerId = null;
+      examSim.msLearnActive = false;
+    } else {
+      examSim.msLearnActive = true;
+      examSim.msLearnTimerId = setInterval(() => {
+        examSim.msLearnSeconds++;
+        const el = document.getElementById("es-mslearn-readout");
+        if (el) el.textContent = `${examSim.msLearnSeconds}s in Docs`;
+      }, 1000);
+    }
+    renderExamSim();
+  }
+
+  function submitExamSession() {
+    clearInterval(examSim.timerId);
+    clearInterval(examSim.msLearnTimerId);
+    examSim.timerId = null;
+    examSim.msLearnTimerId = null;
+    examSim.msLearnActive = false;
+
+    const domTotals = { identity: 0, compute: 0, networking: 0, storage: 0, monitor: 0 };
+    const domRight = { identity: 0, compute: 0, networking: 0, storage: 0, monitor: 0 };
+    let totalRight = 0;
+
+    examSim.questions.forEach((q, idx) => {
+      const userAns = examSim.answers[idx];
+      const ok = userAns === q.answer;
+      domTotals[q.domain] = (domTotals[q.domain] || 0) + 1;
+      if (ok) {
+        domRight[q.domain] = (domRight[q.domain] || 0) + 1;
+        totalRight++;
+      }
+      // Feed every question into domain accuracy and Leitner queue!
+      trackDomainResult(q.domain, ok, lookupReviewableItem(q.uid) ? q.uid : null, false);
+    });
+
+    const overallPct = Math.round((totalRight / Math.max(1, examSim.questions.length)) * 100);
+    const scaledScore = overallPct < 72
+      ? Math.round(300 + (overallPct / 72) * 399)
+      : Math.min(1000, Math.round(700 + ((overallPct - 72) / 28) * 300));
+
+    // Compute per-domain percentages (fallback to overallPct if a single-domain surgical drill left other domains at 0 questions)
+    const domPcts = {};
+    ["identity", "compute", "networking", "storage", "monitor"].forEach(d => {
+      domPcts[d] = domTotals[d] > 0 ? Math.round((domRight[d] / domTotals[d]) * 100) : overallPct;
+    });
+
+    // Auto-log to Overview mockLogs!
+    if (!Array.isArray(state.mockLogs)) state.mockLogs = [];
+    state.mockLogs.unshift({
+      source: `${examSim.modeLabel} (${scaledScore}/1000)`,
+      date: todayKey(),
+      overall: overallPct,
+      domains: domPcts
+    });
+    recordStudyActivity();
+    saveState();
+
+    examSim.status = "report";
+    examSim.lastReport = {
+      totalRight,
+      totalQuestions: examSim.questions.length,
+      overallPct,
+      scaledScore,
+      passed: scaledScore >= 700,
+      domPcts,
+      domTotals,
+      domRight,
+      timeSpentSecs: examSim.totalSeconds - Math.max(0, examSim.secondsLeft),
+      msLearnSeconds: examSim.msLearnSeconds
+    };
+
+    renderExamSim();
+    renderOverview();
+  }
+
+  function renderExamSim() {
+    const root = document.getElementById("examsim-root");
+    if (!root) return;
+
+    if (examSim.status === "lobby") {
+      const report = window.AZ104_READINESS.compute(state);
+      root.innerHTML = `
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Choose Your Timed Exam Simulation Mode</h2>
+              <div class="panel-sub">Zero instant spoilers during the test — simulates real Pearson VUE pacing (90s/question), question flagging, and open-book Microsoft Learn time budgeting.</div>
+            </div>
+            <span class="badge badge-accent mono">Pass Target: 700 / 1000 (72%+)</span>
+          </div>
+          <div class="panel-body" style="display:flex; flex-direction:column; gap:18px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
+              <div style="padding:18px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; justify-content:space-between; gap:14px;">
+                <div>
+                  <span class="badge badge-accent mono">15 Questions • 22m 30s</span>
+                  <h3 style="font-size:16px; margin-top:8px;">Timed Boss Sprint (15Q)</h3>
+                  <p style="font-size:13px; color:var(--text-secondary); margin-top:4px;">Domain-weighted 22-minute exam sprint mixing P1 incidents, blueprint checkpoints, hot-area dropdowns, and locked Yes/No scenarios.</p>
+                </div>
+                <button id="es-start-sprint" class="btn btn-primary">Start 15-Question Timed Sprint →</button>
+              </div>
+
+              <div style="padding:18px; background:var(--bg-canvas); border:1px solid var(--border-strong); border-radius:var(--radius-md); display:flex; flex-direction:column; justify-content:space-between; gap:14px;">
+                <div>
+                  <span class="badge badge-success mono">35 Questions • 52m 30s</span>
+                  <h3 style="font-size:16px; margin-top:8px;">Full AZ-104 Dress Rehearsal (35Q)</h3>
+                  <p style="font-size:13px; color:var(--text-secondary); margin-top:4px;">Comprehensive multi-domain simulation weighted 1-to-1 to the official AZ-104 blueprint. Automatically logs to your 4-Gate Pass Checklist.</p>
+                </div>
+                <button id="es-start-full" class="btn btn-primary">Start 35-Question Dress Rehearsal →</button>
+              </div>
+
+              <div style="padding:18px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; justify-content:space-between; gap:14px;">
+                <div>
+                  <span class="badge badge-warning mono">12 Questions • 18m 00s</span>
+                  <h3 style="font-size:16px; margin-top:8px;">Weakest-Domain Surgical Mock (${report.weakest.shortName})</h3>
+                  <p style="font-size:13px; color:var(--text-secondary); margin-top:4px;">100% focused on your lowest-ranked domain right now (<strong>${report.weakest.name}</strong> at ${report.weakest.masteryPct}%).</p>
+                </div>
+                <button id="es-start-weak" class="btn">Drill ${report.weakest.shortName} Under Clock →</button>
+              </div>
+            </div>
+
+            <div style="padding:14px 16px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); font-size:13px; color:var(--text-secondary);">
+              <strong style="color:var(--text-primary);">Exam-Day Open-Book Strategy Rule:</strong> During the real AZ-104 exam, you can open Microsoft Learn side-by-side, but <strong>the exam clock never pauses</strong>. Use the simulator's built-in <em>MS Learn Lookup Stopwatch</em> to train yourself to flag SKU/limit questions and spend under 45 seconds per lookup!
+            </div>
+          </div>
+        </div>
+      `;
+
+      root.querySelector("#es-start-sprint").addEventListener("click", () => startExamSession("sprint"));
+      root.querySelector("#es-start-full").addEventListener("click", () => startExamSession("full"));
+      root.querySelector("#es-start-weak").addEventListener("click", () => startExamSession("weakest"));
+      return;
+    }
+
+    if (examSim.status === "running") {
+      const q = examSim.questions[examSim.currentIndex];
+      const totalQ = examSim.questions.length;
+      const answeredCount = Object.keys(examSim.answers).length;
+      const isFlagged = !!examSim.flagged[examSim.currentIndex];
+      const chosen = examSim.answers[examSim.currentIndex];
+
+      const mins = String(Math.floor(Math.max(0, examSim.secondsLeft) / 60)).padStart(2, "0");
+      const secs = String(Math.max(0, examSim.secondsLeft) % 60).padStart(2, "0");
+
+      root.innerHTML = `
+        <div class="panel">
+          <!-- Top Exam HUD -->
+          <div class="panel-header" style="background:var(--bg-elevated);">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <span class="badge badge-accent mono">${escapeHtml(examSim.modeLabel)}</span>
+              <span class="mono" style="font-size:12.5px; color:var(--text-secondary);">Answered: <strong>${answeredCount}/${totalQ}</strong></span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <button id="es-mslearn-btn" class="btn btn-sm ${examSim.msLearnActive ? "btn-primary" : ""}">
+                ${examSim.msLearnActive ? "⏸ Stop MS Learn Stopwatch" : "↗ Open MS Learn Lookup Stopwatch"}
+              </button>
+              <span id="es-mslearn-readout" class="badge ${examSim.msLearnSeconds > 120 ? "badge-warning" : ""} mono">${examSim.msLearnSeconds}s in Docs</span>
+              <span class="badge mono" style="font-size:14px; padding:4px 10px;">Clock: <strong id="es-clock-readout" style="margin-left:5px;">${mins}:${secs}</strong></span>
+              <button id="es-submit-btn" class="btn btn-primary btn-sm">Finish &amp; Grade Exam</button>
+            </div>
+          </div>
+
+          <div class="panel-body" style="display:flex; flex-direction:column; gap:18px;">
+            <!-- Question Navigator Strip -->
+            <div>
+              <div style="font-size:11.5px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;">Question Navigator (Green = Answered • Amber = Flagged for Review)</div>
+              <div class="exam-q-nav">
+                ${examSim.questions.map((_, i) => {
+                  const cls = [
+                    "exam-q-pill",
+                    i === examSim.currentIndex ? "active" : "",
+                    examSim.answers[i] !== undefined ? "answered" : "",
+                    examSim.flagged[i] ? "flagged" : ""
+                  ].filter(Boolean).join(" ");
+                  return `<button data-es-jump="${i}" class="${cls}">${i + 1}${examSim.flagged[i] ? "⚑" : ""}</button>`;
+                }).join("")}
+              </div>
+            </div>
+
+            <!-- Question Stem -->
+            <div style="padding:18px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="mono" style="font-size:12px; font-weight:700; color:var(--text-secondary);">QUESTION ${examSim.currentIndex + 1} OF ${totalQ}</span>
+                  <span class="badge">${q.format}</span>
+                  <span class="badge mono">${q.domain.toUpperCase()}</span>
+                </div>
+                <button id="es-flag-btn" class="btn btn-sm ${isFlagged ? "btn-primary" : ""}">
+                  ${isFlagged ? "⚑ Flagged for Review" : "⚑ Flag for Review"}
+                </button>
+              </div>
+              <div style="font-size:14.5px; font-weight:600; line-height:1.6; white-space:pre-line;">${escapeHtml(q.stem)}</div>
+            </div>
+
+            <!-- Options -->
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              ${q.options.map((opt, oi) => {
+                const isPicked = chosen === oi;
+                return `
+                  <button data-es-opt="${oi}" class="option-btn" style="border-color:${isPicked ? "var(--accent)" : "var(--border-subtle)"}; background:${isPicked ? "var(--accent-soft)" : "var(--bg-surface)"};">
+                    <span><strong class="mono" style="margin-right:8px; color:var(--text-secondary);">${String.fromCharCode(65 + oi)}.</strong>${escapeHtml(opt)}</span>
+                    ${isPicked ? `<span class="badge badge-accent">Selected</span>` : ""}
+                  </button>
+                `;
+              }).join("")}
+            </div>
+
+            <!-- Bottom Navigation Bar -->
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding-top:10px; border-top:1px solid var(--border-subtle);">
+              <button id="es-prev-btn" class="btn" ${examSim.currentIndex === 0 ? "disabled" : ""}>← Previous</button>
+              <div style="display:flex; gap:8px;">
+                ${examSim.currentIndex < totalQ - 1
+                  ? `<button id="es-next-btn" class="btn btn-primary">Next Question →</button>`
+                  : `<button id="es-finish-bottom" class="btn btn-primary">Submit &amp; Score Exam ✓</button>`}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      root.querySelectorAll("[data-es-jump]").forEach(b => {
+        b.addEventListener("click", () => {
+          examSim.currentIndex = Number(b.dataset.esJump);
+          renderExamSim();
+        });
+      });
+
+      root.querySelectorAll("[data-es-opt]").forEach(b => {
+        b.addEventListener("click", () => {
+          examSim.answers[examSim.currentIndex] = Number(b.dataset.esOpt);
+          renderExamSim();
+        });
+      });
+
+      root.querySelector("#es-flag-btn").addEventListener("click", () => {
+        examSim.flagged[examSim.currentIndex] = !examSim.flagged[examSim.currentIndex];
+        renderExamSim();
+      });
+
+      root.querySelector("#es-mslearn-btn").addEventListener("click", () => {
+        if (!examSim.msLearnActive) {
+          window.open(q.url || "https://learn.microsoft.com/en-us/azure/", "_blank", "noopener");
+        }
+        toggleMsLearnTimer();
+      });
+
+      const prevBtn = root.querySelector("#es-prev-btn");
+      if (prevBtn) prevBtn.addEventListener("click", () => {
+        if (examSim.currentIndex > 0) { examSim.currentIndex--; renderExamSim(); }
+      });
+
+      const nextBtn = root.querySelector("#es-next-btn");
+      if (nextBtn) nextBtn.addEventListener("click", () => {
+        if (examSim.currentIndex < totalQ - 1) { examSim.currentIndex++; renderExamSim(); }
+      });
+
+      root.querySelector("#es-submit-btn").addEventListener("click", submitExamSession);
+      const finBot = root.querySelector("#es-finish-bottom");
+      if (finBot) finBot.addEventListener("click", submitExamSession);
+      return;
+    }
+
+    // REPORT STATE
+    const rep = examSim.lastReport;
+    root.innerHTML = `
+      <div class="panel" style="margin-bottom:20px;">
+        <div class="panel-header">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="badge ${rep.passed ? "badge-success" : "badge-danger"}">${rep.passed ? "✓ PASS (≥ 700 / 1000)" : "✕ BELOW 700 PASS LINE"}</span>
+              <h2 class="panel-title">${escapeHtml(examSim.modeLabel)} — Scaled Score: ${rep.scaledScore} / 1000 (${rep.overallPct}%)</h2>
+            </div>
+            <div class="panel-sub" style="margin-top:4px;">
+              Auto-saved to your Overview Mock Exam Log &amp; 4-Gate Pass Checklist • Missed items queued into Leitner Box 1.
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button id="es-back-lobby" class="btn btn-primary btn-sm">New Exam Simulation</button>
+            <button id="es-go-leitner" class="btn btn-sm">Review Missed Items in Leitner Queue →</button>
+          </div>
+        </div>
+        <div class="panel-body" style="display:flex; flex-direction:column; gap:16px;">
+          <div class="metrics-grid" style="margin-bottom:0;">
+            <div class="metric-box">
+              <div class="metric-label">Scaled Exam Score</div>
+              <div class="metric-value" style="color:${rep.passed ? "var(--success)" : "var(--danger)"};">${rep.scaledScore} / 1000</div>
+              <div class="metric-foot">Raw: ${rep.totalRight} / ${rep.totalQuestions} (${rep.overallPct}%)</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Pacing &amp; Total Time</div>
+              <div class="metric-value">${Math.floor(rep.timeSpentSecs / 60)}m ${rep.timeSpentSecs % 60}s</div>
+              <div class="metric-foot">Avg ${Math.round(rep.timeSpentSecs / Math.max(1, rep.totalQuestions))}s / question (Target ≤ 90s)</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Open-Book MS Learn Time</div>
+              <div class="metric-value">${rep.msLearnSeconds}s</div>
+              <div class="metric-foot">${rep.msLearnSeconds <= 180 ? "Disciplined lookup budget" : "Watch open-book clock drain!"}</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Domain Breakdown</div>
+              <div class="mono" style="font-size:12px; margin-top:6px; line-height:1.5;">
+                ID: <strong>${rep.domPcts.identity}%</strong> • Comp: <strong>${rep.domPcts.compute}%</strong> • Net: <strong>${rep.domPcts.networking}%</strong><br/>
+                Stor: <strong>${rep.domPcts.storage}%</strong> • Mon: <strong>${rep.domPcts.monitor}%</strong>
+              </div>
+            </div>
+          </div>
+
+          <div style="font-size:13.5px; font-weight:700; padding-top:8px;">Question-by-Question Post-Mortem Review</div>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            ${examSim.questions.map((q, idx) => {
+              const userAns = examSim.answers[idx];
+              const ok = userAns === q.answer;
+              return `
+                <div style="padding:14px 16px; background:var(--bg-canvas); border:1px solid ${ok ? "var(--border-subtle)" : "var(--danger)"}; border-radius:var(--radius-md); display:flex; flex-direction:column; gap:8px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <span class="mono" style="font-size:12px; font-weight:700;">Q${idx + 1} • ${q.format} • ${q.domain.toUpperCase()}</span>
+                    <span class="badge ${ok ? "badge-success" : "badge-danger"}">${ok ? "✓ Correct" : "✕ Missed (Queued in Box 1)"}</span>
+                  </div>
+                  <div style="font-size:13.5px; font-weight:600; white-space:pre-line;">${escapeHtml(q.stem)}</div>
+                  <div style="font-size:12.5px; color:var(--text-secondary);">
+                    Your Answer: <strong style="color:${ok ? "var(--success)" : "var(--danger)"};">${userAns !== undefined ? escapeHtml(q.options[userAns]) : "Unanswered"}</strong>
+                    ${!ok ? `<br/>Correct Answer: <strong style="color:var(--success);">${escapeHtml(q.options[q.answer])}</strong>` : ""}
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; font-size:12.5px; padding-top:6px; border-top:1px solid var(--border-subtle);">
+                    <span>${q.why}</span>
+                    <a href="${q.url}" target="_blank" rel="noopener" style="font-weight:600;">↗ MS Learn Proof</a>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      </div>
+    `;
+
+    root.querySelector("#es-back-lobby").addEventListener("click", () => {
+      examSim.status = "lobby";
+      renderExamSim();
+    });
+    root.querySelector("#es-go-leitner").addEventListener("click", () => {
+      state.pracSub = "speedrun";
+      srMode = "review";
+      switchView("practice");
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // VIEW 5: INTERACTIVE DECISION MATRICES & ACTIVE-RECALL FLASH CELLS
+  // ---------------------------------------------------------------------------
+  const toggleRecallBtn = document.getElementById("btn-toggle-matrix-recall");
+  const resetRevealsBtn = document.getElementById("btn-reset-matrix-reveals");
+
+  if (toggleRecallBtn) {
+    toggleRecallBtn.addEventListener("click", () => {
+      state.matrixRecallMode = !state.matrixRecallMode;
+      saveState();
+      renderMatricesView();
+    });
+  }
+
+  if (resetRevealsBtn) {
+    resetRevealsBtn.addEventListener("click", () => {
+      state.revealedMatrixCells = {};
+      state.matrixRecallMode = true;
+      saveState();
+      renderMatricesView();
+    });
+  }
+
+  function formatMatrixCellHtml(rawText, cellKeyPrefix) {
+    let tokenIdx = 0;
+    return escapeHtml(rawText).replace(/\[\[([^\]]+)\]\]/g, (_, inner) => {
+      const key = `${cellKeyPrefix}_${tokenIdx++}`;
+      if (!state.matrixRecallMode) {
+        return `<strong style="color:var(--text-primary);">${inner}</strong>`;
+      }
+      if (state.revealedMatrixCells && state.revealedMatrixCells[key]) {
+        return `<span class="recall-revealed">${inner}</span>`;
+      }
+      return `<button data-reveal-cell="${key}" class="recall-blank" title="Click to test your recall and reveal">? Click to Recall</button>`;
+    });
+  }
+
+  function renderMatricesView() {
+    const filtersEl = document.getElementById("matrix-filters");
+    const root = document.getElementById("matrices-root");
+    if (!root || !filtersEl) return;
+
+    if (toggleRecallBtn) {
+      toggleRecallBtn.textContent = state.matrixRecallMode
+        ? "Active Recall Mode: ON (Click Blank Cells to Reveal)"
+        : "Active Recall Mode: OFF (Showing All Answers)";
+      toggleRecallBtn.classList.toggle("btn-primary", !!state.matrixRecallMode);
+    }
+
+    const filterOpts = [
+      { id: "all", label: `All 8 Decision Matrices` },
+      { id: "identity", label: "Identity & Gov" },
+      { id: "storage", label: "Storage" },
+      { id: "compute", label: "Compute" },
+      { id: "networking", label: "Networking" },
+      { id: "monitor", label: "Monitor & Backup" }
+    ];
+    filtersEl.innerHTML = filterOpts.map(f => `
+      <button data-mf="${f.id}" class="btn btn-sm ${state.matrixFilter === f.id ? "btn-primary" : ""}">${f.label}</button>
+    `).join("");
+
+    filtersEl.querySelectorAll("[data-mf]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.matrixFilter = btn.dataset.mf;
+        saveState();
+        renderMatricesView();
+      });
+    });
+
+    const visible = DECISION_MATRICES.filter(m => state.matrixFilter === "all" || m.domain === state.matrixFilter);
+
+    root.innerHTML = visible.map(m => `
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span class="badge">${m.domainLabel}</span>
+            </div>
+            <h2 class="panel-title">${escapeHtml(m.title)}</h2>
+            <div class="panel-sub">${escapeHtml(m.subtitle)}</div>
+          </div>
+        </div>
+        <div class="matrix-table-wrap">
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                ${m.headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${m.rows.map((row, ri) => `
+                <tr>
+                  ${row.map((cell, ci) => `
+                    <td style="${ci === 0 ? "font-weight:650; white-space:nowrap;" : ""}">
+                      ${formatMatrixCellHtml(cell, `${m.id}_${ri}_${ci}`)}
+                    </td>
+                  `).join("")}
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `).join("");
+
+    root.querySelectorAll("[data-reveal-cell]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (!state.revealedMatrixCells) state.revealedMatrixCells = {};
+        state.revealedMatrixCells[btn.dataset.revealCell] = true;
+        recordStudyActivity();
+        saveState();
+        renderMatricesView();
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // VIEW 6: OFFICIAL MICROSOFT LEARN STUDY GUIDE BLUEPRINT (81/81)
   // ---------------------------------------------------------------------------
   let bpFilter = "all", bpQuery = "";
 
@@ -1543,7 +2911,7 @@
   document.getElementById("bp-search").addEventListener("input", e => { bpQuery = e.target.value; renderBlueprint(); });
 
   // ---------------------------------------------------------------------------
-  // 5-MINUTE QUICK DRILL (targeted to weakest domain!)
+  // 5-MINUTE QUICK DRILL (prioritizes Leitner Box 1 + Weakest Domain!)
   // ---------------------------------------------------------------------------
   const rescueModal = document.getElementById("rescue-modal");
   const rescueBody = document.getElementById("rescue-body");
@@ -1552,8 +2920,14 @@
   document.getElementById("btn-rescue").addEventListener("click", () => {
     const report = window.AZ104_READINESS.compute(state);
     const weakDom = report.weakest.id;
-    const domCards = SPEEDRUN_CARDS.filter(c => c.domain === weakDom);
-    rescueCard = domCards[Math.floor(Math.random() * domCards.length)] || SPEEDRUN_CARDS[0];
+    const dueLeitner = getDueLeitnerQueue();
+    if (dueLeitner.length > 0) {
+      rescueCard = lookupReviewableItem(dueLeitner[0].id);
+    }
+    if (!rescueCard) {
+      const domCards = SPEEDRUN_CARDS.filter(c => c.domain === weakDom);
+      rescueCard = domCards[Math.floor(Math.random() * domCards.length)] || SPEEDRUN_CARDS[0];
+    }
     const domTickets = TICKETS.filter(t => t.domain === weakDom && !state.solvedTickets[t.id]);
     rescueTicket = domTickets[0] || TICKETS.find(t => t.domain === weakDom) || TICKETS[0];
     rescueStep = 1;
@@ -1567,9 +2941,9 @@
   function renderRescue() {
     if (rescueStep === 1) {
       rescueBody.innerHTML = `
-        <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; color:var(--text-secondary);">Step 1 of 2 • Priority Domain Trap (${rescueCard.domain})</div>
-        <div style="font-size:15.5px; font-weight:650;">${rescueCard.prompt}</div>
-        <div class="topo-grid-2">
+        <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; color:var(--text-secondary);">Step 1 of 2 • Priority Domain / Leitner Trap (${rescueCard.domain})</div>
+        <div style="font-size:15.5px; font-weight:650; white-space:pre-line;">${escapeHtml(rescueCard.prompt)}</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
           ${rescueCard.choices.map((c, i) => `<button data-r1="${i}" class="option-btn">${c}</button>`).join("")}
         </div>
         <div id="r1-fb"></div>
@@ -1577,10 +2951,10 @@
       rescueBody.querySelectorAll("[data-r1]").forEach(btn => {
         btn.addEventListener("click", () => {
           const ok = Number(btn.dataset.r1) === rescueCard.answer;
-          trackDomainResult(rescueCard.domain, ok, rescueCard.id);
+          trackDomainResult(rescueCard.domain, ok, rescueCard.id, true);
           rescueBody.querySelector("#r1-fb").innerHTML = `
             <div style="padding:12px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:8px;">
-              <div style="font-weight:700; color:${ok ? "var(--success)" : "var(--warning)"};">${ok ? "Correct" : "Key Rule"}</div>
+              <div style="font-weight:700; color:${ok ? "var(--success)" : "var(--warning)"};">${ok ? "Correct" : "Key Rule (Queued in Leitner Box 1)"}</div>
               <p style="font-size:13px;">${rescueCard.why}</p>
               <div><button id="r-next" class="btn btn-primary btn-sm">Next: Step 2 of 2 →</button></div>
             </div>
@@ -1604,7 +2978,7 @@
       rescueBody.querySelectorAll("[data-r2]").forEach(btn => {
         btn.addEventListener("click", () => {
           const ok = Number(btn.dataset.r2) === rescueTicket.answer;
-          trackDomainResult(rescueTicket.domain, ok, null);
+          trackDomainResult(rescueTicket.domain, ok, rescueTicket.id, true);
           if (ok) state.solvedTickets[rescueTicket.id] = true;
           if (!rescueAnswered) {
             rescueAnswered = true;
@@ -1658,6 +3032,8 @@
     renderOverview();
     renderPlanView();
     renderPracticeView();
+    renderExamSim();
+    renderMatricesView();
     renderBlueprint();
   }
 
