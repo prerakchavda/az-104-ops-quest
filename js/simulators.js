@@ -1,5 +1,5 @@
 // =============================================================================
-// AZ-104 OPS QUEST — 3 INTERACTIVE AZURE BROWSER SIMULATORS
+// AZ-104 OPS QUEST — 3 INTERACTIVE AZURE BROWSER SIMULATORS (VANILLA CSS)
 // 1. NSG Packet Tracer (Subnet NSG + NIC NSG + Default Rules)
 // 2. RBAC + Resource Lock + Azure Policy Precedence Evaluator
 // 3. Azure "-5 IP" Subnet & CIDR Planner (Overlap + Bastion /26 Validator)
@@ -8,9 +8,6 @@
 window.AZ104_SIMS = (function () {
   let activeSim = "nsg";
 
-  // ---------------------------------------------------------------------------
-  // SIM 1: NSG PACKET TRACER STATE
-  // ---------------------------------------------------------------------------
   const NSG_PRESETS = {
     lbProbe: {
       label: "LB Health Probe Blocked",
@@ -68,15 +65,15 @@ window.AZ104_SIMS = (function () {
   function getDefaultRules(direction) {
     if (direction === "Inbound") {
       return [
-        { prio: 65000, action: "Allow", source: "VirtualNetwork", port: "*", name: "AllowVnetInBound (Default)", isDefault: true },
-        { prio: 65001, action: "Allow", source: "AzureLoadBalancer", port: "*", name: "AllowAzureLoadBalancerInBound (Default)", isDefault: true },
-        { prio: 65500, action: "Deny", source: "Any", port: "*", name: "DenyAllInBound (Default)", isDefault: true }
+        { prio: 65000, action: "Allow", source: "VirtualNetwork", port: "*", name: "AllowVnetInBound (Default)" },
+        { prio: 65001, action: "Allow", source: "AzureLoadBalancer", port: "*", name: "AllowAzureLoadBalancerInBound (Default)" },
+        { prio: 65500, action: "Deny", source: "Any", port: "*", name: "DenyAllInBound (Default)" }
       ];
     }
     return [
-      { prio: 65000, action: "Allow", source: "VirtualNetwork", port: "*", name: "AllowVnetOutBound (Default)", isDefault: true },
-      { prio: 65001, action: "Allow", source: "Internet", port: "*", name: "AllowInternetOutBound (Default)", isDefault: true },
-      { prio: 65500, action: "Deny", source: "Any", port: "*", name: "DenyAllOutBound (Default)", isDefault: true }
+      { prio: 65000, action: "Allow", source: "VirtualNetwork", port: "*", name: "AllowVnetOutBound (Default)" },
+      { prio: 65001, action: "Allow", source: "Internet", port: "*", name: "AllowInternetOutBound (Default)" },
+      { prio: 65500, action: "Deny", source: "Any", port: "*", name: "DenyAllOutBound (Default)" }
     ];
   }
 
@@ -92,9 +89,7 @@ window.AZ104_SIMS = (function () {
     return { matched: all[all.length - 1], allowed: false };
   }
 
-  // ---------------------------------------------------------------------------
-  // SIM 2: RBAC + LOCK + POLICY PRECEDENCE STATE
-  // ---------------------------------------------------------------------------
+  // SIM 2: RBAC + LOCK + POLICY
   let govState = {
     controlRole: "Owner",
     dataRole: "None",
@@ -118,9 +113,7 @@ window.AZ104_SIMS = (function () {
     let allowed = true;
     let finalReason = "";
 
-    // Step 1: RBAC
-    let rbacOk = false;
-    let rbacMsg = "";
+    let rbacOk = false, rbacMsg = "";
     if (act.plane === "data") {
       if (govState.dataRole === "Storage Blob Data Reader" || govState.dataRole === "Storage Blob Data Contributor") {
         rbacOk = true;
@@ -149,16 +142,14 @@ window.AZ104_SIMS = (function () {
     steps.push({ name: "1. RBAC Evaluation", ok: rbacOk, msg: rbacMsg });
     if (!rbacOk) { allowed = false; finalReason = rbacMsg; }
 
-    // Step 2: Resource Lock
-    let lockOk = true;
-    let lockMsg = "No Resource Lock blocking this action.";
+    let lockOk = true, lockMsg = "No Resource Lock blocking this action.";
     if (govState.lock === "CanNotDelete" && act.op === "delete") {
       lockOk = false;
       lockMsg = "BLOCKED by CanNotDelete lock! Locks override even Subscription Owners — remove the lock first.";
     } else if (govState.lock === "ReadOnly" && (act.op === "delete" || act.op === "write_post" || act.op === "create" || act.op === "rbac")) {
       lockOk = false;
       lockMsg = act.op === "write_post"
-        ? "BLOCKED by ReadOnly lock! Classic AZ-104 trap: listing Storage Account keys is a POST operation, so ReadOnly locks block it!"
+        ? "BLOCKED by ReadOnly lock! Listing Storage Account keys is a POST operation, so ReadOnly locks block it!"
         : "BLOCKED by ReadOnly lock! Only GET read operations are allowed until the lock is removed.";
     } else if (govState.lock !== "None") {
       lockMsg = `${govState.lock} lock is present, but does not block this specific operation.`;
@@ -166,9 +157,7 @@ window.AZ104_SIMS = (function () {
     steps.push({ name: "2. Resource Lock Check", ok: lockOk, msg: lockMsg });
     if (allowed && !lockOk) { allowed = false; finalReason = lockMsg; }
 
-    // Step 3: Azure Policy
-    let polOk = true;
-    let polMsg = "No Azure Policy blocking this action.";
+    let polOk = true, polMsg = "No Azure Policy blocking this action.";
     if (govState.policy === "deny_region" && act.op === "create" && act.region !== "eastus") {
       polOk = false;
       polMsg = "BLOCKED by Azure Policy 'Allowed Locations (East US only)'! Deny effect stops deployments in Japan East even for Owners.";
@@ -183,9 +172,7 @@ window.AZ104_SIMS = (function () {
     return { allowed, steps, finalReason };
   }
 
-  // ---------------------------------------------------------------------------
-  // SIM 3: AZURE "-5 IP" SUBNET & CIDR PLANNER
-  // ---------------------------------------------------------------------------
+  // SIM 3: SUBNET PLANNER
   let cidrState = {
     vnetCidr: "10.0.0.0/16",
     subnets: [
@@ -214,25 +201,26 @@ window.AZ104_SIMS = (function () {
     return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join(".");
   }
 
-  // ---------------------------------------------------------------------------
-  // RENDER CONTROLLER
-  // ---------------------------------------------------------------------------
+  function setSim(simId) {
+    if (["nsg", "gov", "cidr"].includes(simId)) activeSim = simId;
+  }
+
   function render(container) {
     if (!container) return;
     container.innerHTML = `
-      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-5">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--card-border)] pb-3">
+      <div class="panel">
+        <div class="panel-header">
           <div>
-            <h2 class="text-base font-bold">Interactive Azure Simulators (Zero Azure Login Needed)</h2>
-            <p class="text-xs text-[var(--muted-foreground)]">Break rules, trace packets, test locks vs Owners, and carve Azure subnets with real -5 IP math.</p>
+            <div class="panel-title">Interactive Azure Simulators</div>
+            <div class="panel-sub">Test 2-gate NSG packet evaluation, RBAC/Lock/Policy collisions, and Azure -5 IP subnet math directly in your browser.</div>
           </div>
-          <div class="flex flex-wrap gap-1.5">
-            <button data-sim="nsg" class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${activeSim === "nsg" ? "bg-[var(--primary)] text-[var(--primary-foreground)]" : "bg-[var(--content)] border border-[var(--card-border)] text-[var(--foreground)]"}">1. NSG Packet Tracer</button>
-            <button data-sim="gov" class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${activeSim === "gov" ? "bg-[var(--primary)] text-[var(--primary-foreground)]" : "bg-[var(--content)] border border-[var(--card-border)] text-[var(--foreground)]"}">2. RBAC + Lock + Policy</button>
-            <button data-sim="cidr" class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${activeSim === "cidr" ? "bg-[var(--primary)] text-[var(--primary-foreground)]" : "bg-[var(--content)] border border-[var(--card-border)] text-[var(--foreground)]"}">3. Azure -5 IP Planner</button>
+          <div class="segmented">
+            <button data-sim="nsg" class="seg-btn ${activeSim === "nsg" ? "active" : ""}">1. NSG Packet Tracer</button>
+            <button data-sim="gov" class="seg-btn ${activeSim === "gov" ? "active" : ""}">2. RBAC + Lock + Policy</button>
+            <button data-sim="cidr" class="seg-btn ${activeSim === "cidr" ? "active" : ""}">3. Azure -5 IP Subnet Planner</button>
           </div>
         </div>
-        <div id="sim-body"></div>
+        <div id="sim-body" class="panel-body"></div>
       </div>
     `;
 
@@ -261,64 +249,60 @@ window.AZ104_SIMS = (function () {
     const finalAllowed = r1.allowed && r2 && r2.allowed;
 
     body.innerHTML = `
-      <div class="space-y-4">
-        <!-- Presets -->
-        <div class="flex flex-wrap items-center gap-2 text-xs">
-          <span class="font-semibold text-[var(--muted-foreground)]">Try a Scenario:</span>
+      <div style="display:flex; flex-direction:column; gap:18px;">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+          <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Load Preset Scenario:</span>
           ${Object.entries(NSG_PRESETS).map(([k, p]) => `
-            <button data-preset="${k}" class="px-2.5 py-1 rounded-md bg-[var(--content)] border border-[var(--card-border)] hover:border-[var(--primary)] cursor-pointer">${p.label}</button>
+            <button data-preset="${k}" class="btn btn-sm">${p.label}</button>
           `).join("")}
         </div>
 
-        <!-- Packet Controls -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-[var(--content)] border border-[var(--card-border)] rounded-xl p-3.5 text-xs">
-          <label class="space-y-1 block">
-            <span class="text-[var(--muted-foreground)] font-semibold">Traffic Direction</span>
-            <select id="nsg-dir" class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px; padding:14px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md);">
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span style="color:var(--text-secondary); font-weight:600;">Traffic Direction</span>
+            <select id="nsg-dir" class="select">
               <option value="Inbound" ${nsgState.direction === "Inbound" ? "selected" : ""}>Inbound (Subnet NSG → NIC NSG)</option>
               <option value="Outbound" ${nsgState.direction === "Outbound" ? "selected" : ""}>Outbound (NIC NSG → Subnet NSG)</option>
             </select>
           </label>
-          <label class="space-y-1 block">
-            <span class="text-[var(--muted-foreground)] font-semibold">${isIn ? "Source" : "Destination"} Tag</span>
-            <select id="nsg-src" class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span style="color:var(--text-secondary); font-weight:600;">${isIn ? "Source" : "Destination"} Service Tag</span>
+            <select id="nsg-src" class="select">
               ${["Internet", "VirtualNetwork", "AzureLoadBalancer"].map(s => `<option value="${s}" ${nsgState.source === s ? "selected" : ""}>${s}</option>`).join("")}
             </select>
           </label>
-          <label class="space-y-1 block">
-            <span class="text-[var(--muted-foreground)] font-semibold">Destination Port</span>
-            <select id="nsg-port" class="w-full px-2.5 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span style="color:var(--text-secondary); font-weight:600;">Destination Port</span>
+            <select id="nsg-port" class="select">
               ${["80", "443", "22", "3389", "445"].map(p => `<option value="${p}" ${nsgState.port === p ? "selected" : ""}>TCP ${p}</option>`).join("")}
             </select>
           </label>
         </div>
 
-        <!-- Visual Packet Pipeline Result -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div class="bg-[var(--content)] border-2 rounded-xl p-3.5 space-y-1" style="border-color: ${r1.allowed ? "var(--success)" : "var(--error)"};">
-            <div class="flex items-center justify-between text-xs font-bold">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px;">
+          <div style="padding:14px; background:var(--bg-canvas); border:1px solid ${r1.allowed ? "var(--success)" : "var(--danger)"}; border-radius:var(--radius-md);">
+            <div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:700;">
               <span>${gate1Name}</span>
-              <span style="color: ${r1.allowed ? "var(--success)" : "var(--error)"};">${r1.allowed ? "PASS →" : "DROPPED ✗"}</span>
+              <span class="badge ${r1.allowed ? "badge-success" : "badge-danger"}">${r1.allowed ? "PASS →" : "DROPPED"}</span>
             </div>
-            <div class="text-xs text-[var(--muted-foreground)]">Matched Priority <strong>${r1.matched.prio}</strong>: ${r1.matched.name} (${r1.matched.action} ${r1.matched.source}:${r1.matched.port})</div>
+            <p style="font-size:12px; color:var(--text-secondary); margin-top:6px;">Matched Priority <strong class="mono">${r1.matched.prio}</strong>: ${r1.matched.name} (${r1.matched.action} ${r1.matched.source}:${r1.matched.port})</p>
           </div>
 
-          <div class="bg-[var(--content)] border-2 rounded-xl p-3.5 space-y-1" style="border-color: ${!r1.allowed ? "var(--border)" : (r2.allowed ? "var(--success)" : "var(--error)")}; opacity: ${r1.allowed ? "1" : "0.55"};">
-            <div class="flex items-center justify-between text-xs font-bold">
+          <div style="padding:14px; background:var(--bg-canvas); border:1px solid ${!r1.allowed ? "var(--border-subtle)" : (r2.allowed ? "var(--success)" : "var(--danger)")}; border-radius:var(--radius-md); opacity:${r1.allowed ? "1" : "0.55"};">
+            <div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:700;">
               <span>${gate2Name}</span>
-              <span style="color: ${!r1.allowed ? "var(--muted-foreground)" : (r2.allowed ? "var(--success)" : "var(--error)")};">${!r1.allowed ? "NEVER REACHED" : (r2.allowed ? "PASS →" : "DROPPED ✗")}</span>
+              <span class="badge ${!r1.allowed ? "" : (r2.allowed ? "badge-success" : "badge-danger")}">${!r1.allowed ? "UNREACHED" : (r2.allowed ? "PASS →" : "DROPPED")}</span>
             </div>
-            <div class="text-xs text-[var(--muted-foreground)]">${!r1.allowed ? "Packet was already dropped at Gate 1." : `Matched Priority <strong>${r2.matched.prio}</strong>: ${r2.matched.name} (${r2.matched.action} ${r2.matched.source}:${r2.matched.port})`}</div>
+            <p style="font-size:12px; color:var(--text-secondary); margin-top:6px;">${!r1.allowed ? "Packet dropped at Gate 1 before reaching Gate 2." : `Matched Priority <strong class="mono">${r2.matched.prio}</strong>: ${r2.matched.name} (${r2.matched.action} ${r2.matched.source}:${r2.matched.port})`}</p>
           </div>
 
-          <div class="bg-[var(--content)] border-2 rounded-xl p-3.5 space-y-1" style="border-color: ${finalAllowed ? "var(--success)" : "var(--error)"};">
-            <div class="text-xs font-bold uppercase tracking-wide" style="color: ${finalAllowed ? "var(--success)" : "var(--error)"};">Final Verdict: ${finalAllowed ? "PACKET DELIVERED ✓" : "PACKET BLOCKED ✗"}</div>
-            <div class="text-xs text-[var(--muted-foreground)]">${finalAllowed ? "Both NSGs allowed the packet!" : "Both Subnet NSG and NIC NSG must independently allow the packet. Lowest priority number wins inside each NSG."}</div>
+          <div style="padding:14px; background:var(--bg-canvas); border:1px solid ${finalAllowed ? "var(--success)" : "var(--danger)"}; border-radius:var(--radius-md);">
+            <div style="font-size:12.5px; font-weight:700; color:${finalAllowed ? "var(--success)" : "var(--danger)"};">Final Verdict: ${finalAllowed ? "PACKET DELIVERED" : "PACKET BLOCKED"}</div>
+            <p style="font-size:12px; color:var(--text-secondary); margin-top:6px;">${finalAllowed ? "Both NSG gates independently allowed the packet." : "Both Subnet NSG and NIC NSG must independently allow the packet. Lowest priority number wins inside each NSG."}</p>
           </div>
         </div>
 
-        <!-- Editable Rules for Subnet & NIC NSG -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px;">
           ${renderRuleBox("Subnet NSG Custom Rules", "subnetRules", nsgState.subnetRules)}
           ${renderRuleBox("NIC NSG Custom Rules", "nicRules", nsgState.nicRules)}
         </div>
@@ -365,37 +349,29 @@ window.AZ104_SIMS = (function () {
   function renderRuleBox(title, listKey, rules) {
     const sorted = [...rules].sort((a, b) => a.prio - b.prio);
     return `
-      <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-xl p-3.5 space-y-2.5">
-        <div class="text-xs font-bold">${title}</div>
-        <div class="space-y-1.5">
-          ${sorted.length ? sorted.map((r, i) => `
-            <div class="flex items-center justify-between gap-2 text-xs px-2.5 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
-              <span class="font-mono"><strong>${r.prio}</strong> • <span style="color:${r.action === "Allow" ? "var(--success)" : "var(--error)"}">${r.action}</span> • ${r.source}:${r.port}</span>
-              <button data-del-rule="${listKey}:${rules.indexOf(r)}" class="text-[var(--muted-foreground)] hover:text-[var(--error)] cursor-pointer font-bold">✕</button>
+      <div style="padding:14px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:10px;">
+        <div style="font-size:13px; font-weight:650;">${title}</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          ${sorted.length ? sorted.map(r => `
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:7px 10px; background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:12px;">
+              <span class="mono"><strong>${r.prio}</strong> • <span style="color:${r.action === "Allow" ? "var(--success)" : "var(--danger)"}">${r.action}</span> • ${r.source}:${r.port}</span>
+              <button data-del-rule="${listKey}:${rules.indexOf(r)}" class="btn btn-sm" style="padding:2px 7px;">Remove</button>
             </div>
-          `).join("") : `<div class="text-xs text-[var(--muted-foreground)]">No custom rules (using Azure defaults 65000–65500).</div>`}
+          `).join("") : `<div style="font-size:12px; color:var(--text-secondary);">No custom rules (using Azure defaults 65000–65500).</div>`}
         </div>
-        <form data-add-rule="${listKey}" class="flex flex-wrap gap-1.5 pt-1 text-xs">
-          <input name="prio" type="number" min="100" max="4096" value="110" class="w-16 px-2 py-1 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] font-mono" title="Priority (100-4096)" />
-          <select name="action" class="px-2 py-1 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
-            <option value="Allow">Allow</option>
-            <option value="Deny">Deny</option>
-          </select>
-          <select name="source" class="px-2 py-1 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
+        <form data-add-rule="${listKey}" style="display:flex; flex-wrap:wrap; gap:6px; padding-top:4px;">
+          <input name="prio" type="number" min="100" max="4096" value="110" class="input mono" style="width:72px;" title="Priority (100-4096)" />
+          <select name="action" class="select"><option value="Allow">Allow</option><option value="Deny">Deny</option></select>
+          <select name="source" class="select">
             <option value="Any">Any</option>
             <option value="Internet">Internet</option>
             <option value="VirtualNetwork">VirtualNetwork</option>
             <option value="AzureLoadBalancer">AzureLoadBalancer</option>
           </select>
-          <select name="port" class="px-2 py-1 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
-            <option value="*">*</option>
-            <option value="80">80</option>
-            <option value="443">443</option>
-            <option value="22">22</option>
-            <option value="3389">3389</option>
-            <option value="445">445</option>
+          <select name="port" class="select">
+            <option value="*">*</option><option value="80">80</option><option value="443">443</option><option value="22">22</option><option value="3389">3389</option><option value="445">445</option>
           </select>
-          <button type="submit" class="px-2.5 py-1 rounded bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold cursor-pointer">+ Add</button>
+          <button type="submit" class="btn btn-primary btn-sm">+ Add Rule</button>
         </form>
       </div>
     `;
@@ -404,59 +380,57 @@ window.AZ104_SIMS = (function () {
   function renderGov(body) {
     const res = evaluateGovernance();
     body.innerHTML = `
-      <div class="space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-[var(--content)] border border-[var(--card-border)] rounded-xl p-3.5 text-xs">
-          <label class="space-y-1 block">
-            <span class="font-semibold text-[var(--muted-foreground)]">Control Plane RBAC</span>
-            <select id="g-ctrl" class="w-full px-2 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
+      <div style="display:flex; flex-direction:column; gap:18px;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(175px, 1fr)); gap:12px; padding:14px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md);">
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span style="font-weight:600; color:var(--text-secondary);">Control Plane RBAC</span>
+            <select id="g-ctrl" class="select">
               ${["None", "Reader", "Contributor", "Owner", "User Access Administrator"].map(r => `<option value="${r}" ${govState.controlRole === r ? "selected" : ""}>${r}</option>`).join("")}
             </select>
           </label>
-          <label class="space-y-1 block">
-            <span class="font-semibold text-[var(--muted-foreground)]">Data Plane RBAC</span>
-            <select id="g-data" class="w-full px-2 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span style="font-weight:600; color:var(--text-secondary);">Data Plane RBAC</span>
+            <select id="g-data" class="select">
               ${["None", "Storage Blob Data Reader", "Storage Blob Data Contributor"].map(r => `<option value="${r}" ${govState.dataRole === r ? "selected" : ""}>${r}</option>`).join("")}
             </select>
           </label>
-          <label class="space-y-1 block">
-            <span class="font-semibold text-[var(--muted-foreground)]">Resource Lock</span>
-            <select id="g-lock" class="w-full px-2 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span style="font-weight:600; color:var(--text-secondary);">Resource Lock</span>
+            <select id="g-lock" class="select">
               ${["None", "CanNotDelete", "ReadOnly"].map(r => `<option value="${r}" ${govState.lock === r ? "selected" : ""}>${r}</option>`).join("")}
             </select>
           </label>
-          <label class="space-y-1 block">
-            <span class="font-semibold text-[var(--muted-foreground)]">Azure Policy</span>
-            <select id="g-pol" class="w-full px-2 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span style="font-weight:600; color:var(--text-secondary);">Azure Policy</span>
+            <select id="g-pol" class="select">
               <option value="None" ${govState.policy === "None" ? "selected" : ""}>None</option>
               <option value="deny_region" ${govState.policy === "deny_region" ? "selected" : ""}>Deny: East US Only</option>
               <option value="modify_tag" ${govState.policy === "modify_tag" ? "selected" : ""}>Modify: Add Required Tag</option>
             </select>
           </label>
-          <label class="space-y-1 block">
-            <span class="font-semibold text-[var(--muted-foreground)]">Action Attempted</span>
-            <select id="g-act" class="w-full px-2 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span style="font-weight:600; color:var(--text-secondary);">Action Attempted</span>
+            <select id="g-act" class="select">
               ${Object.entries(GOV_ACTIONS).map(([k, v]) => `<option value="${k}" ${govState.action === k ? "selected" : ""}>${v.label}</option>`).join("")}
             </select>
           </label>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px;">
           ${res.steps.map(s => `
-            <div class="bg-[var(--content)] border-2 rounded-xl p-3.5 space-y-1" style="border-color: ${s.ok ? "var(--success)" : "var(--error)"};">
-              <div class="flex items-center justify-between text-xs font-bold">
+            <div style="padding:14px; background:var(--bg-canvas); border:1px solid ${s.ok ? "var(--success)" : "var(--danger)"}; border-radius:var(--radius-md);">
+              <div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:700;">
                 <span>${s.name}</span>
-                <span style="color: ${s.ok ? "var(--success)" : "var(--error)"};">${s.ok ? "PASS ✓" : "BLOCKED ✗"}</span>
+                <span class="badge ${s.ok ? "badge-success" : "badge-danger"}">${s.ok ? "PASS" : "BLOCKED"}</span>
               </div>
-              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">${s.msg}</p>
+              <p style="font-size:12px; color:var(--text-secondary); margin-top:6px;">${s.msg}</p>
             </div>
           `).join("")}
         </div>
 
-        <div class="bg-[var(--content)] border-2 rounded-xl p-4" style="border-color: ${res.allowed ? "var(--success)" : "var(--error)"};">
-          <div class="text-sm font-bold" style="color: ${res.allowed ? "var(--success)" : "var(--error)"};">
-            ${res.allowed ? "✓ ACTION ALLOWED" : "✗ ACTION DENIED"}
-          </div>
-          <p class="text-xs sm:text-sm text-[var(--foreground)] mt-1">${res.finalReason}</p>
+        <div style="padding:16px; background:var(--bg-canvas); border:1px solid ${res.allowed ? "var(--success)" : "var(--danger)"}; border-radius:var(--radius-md);">
+          <div style="font-size:14px; font-weight:700; color:${res.allowed ? "var(--success)" : "var(--danger)"};">${res.allowed ? "ACTION ALLOWED" : "ACTION DENIED"}</div>
+          <p style="font-size:13px; margin-top:4px;">${res.finalReason}</p>
         </div>
       </div>
     `;
@@ -472,14 +446,13 @@ window.AZ104_SIMS = (function () {
     const vnet = parseCidr(cidrState.vnetCidr);
     const parsedSubs = cidrState.subnets.map((s, idx) => ({ ...s, idx, info: parseCidr(s.cidr), issues: [] }));
 
-    // Validate each subnet
     parsedSubs.forEach((s, i) => {
       if (!s.info) { s.issues.push("Invalid CIDR syntax (use x.x.x.x/8..29)"); return; }
       if (vnet && (s.info.start < vnet.start || s.info.end > vnet.end)) {
         s.issues.push(`Outside VNet range (${vnet.startStr}–${vnet.endStr})`);
       }
       if (s.name === "AzureBastionSubnet" && s.info.prefix > 26) {
-        s.issues.push("AzureBastionSubnet MUST be /26 or larger!");
+        s.issues.push("AzureBastionSubnet MUST be /26 or larger");
       }
       if (s.name.toLowerCase().includes("bastion") && s.name !== "AzureBastionSubnet") {
         s.issues.push("Must be named EXACTLY 'AzureBastionSubnet'");
@@ -497,47 +470,47 @@ window.AZ104_SIMS = (function () {
     const totalAllocated = parsedSubs.reduce((acc, s) => acc + (s.info ? s.info.size : 0), 0);
 
     body.innerHTML = `
-      <div class="space-y-4">
-        <div class="flex flex-wrap items-end justify-between gap-3 bg-[var(--content)] border border-[var(--card-border)] rounded-xl p-3.5 text-xs">
-          <div class="flex flex-wrap items-end gap-3">
-            <label class="space-y-1 block">
-              <span class="font-semibold text-[var(--muted-foreground)]">VNet Address Space</span>
-              <input id="vnet-cidr-in" type="text" value="${cidrState.vnetCidr}" class="px-2.5 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] font-mono text-[var(--foreground)] w-40" />
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <div style="display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:12px; padding:14px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md);">
+          <div style="display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px;">
+            <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+              <span style="font-weight:600; color:var(--text-secondary);">VNet Address Space</span>
+              <input id="vnet-cidr-in" type="text" value="${cidrState.vnetCidr}" class="input mono" style="width:155px;" />
             </label>
-            <div class="text-[var(--muted-foreground)] pb-1.5">
-              ${vnet ? `Range: <strong class="font-mono text-[var(--foreground)]">${vnet.startStr} – ${vnet.endStr}</strong> (${vnet.size.toLocaleString()} total IPs • ${totalAllocated.toLocaleString()} carved)` : `<span style="color:var(--error)">Invalid VNet CIDR</span>`}
+            <div style="font-size:12.5px; color:var(--text-secondary); padding-bottom:6px;">
+              ${vnet ? `Range: <strong class="mono" style="color:var(--text-primary);">${vnet.startStr} – ${vnet.endStr}</strong> (${vnet.size.toLocaleString()} total IPs • ${totalAllocated.toLocaleString()} carved)` : `<span style="color:var(--danger)">Invalid VNet CIDR</span>`}
             </div>
           </div>
-          <div class="flex gap-2">
-            <button id="cidr-broken-preset" class="px-2.5 py-1.5 rounded-lg bg-[var(--secondary)] text-[var(--secondary-foreground)] font-semibold cursor-pointer">Load Broken Exam Trap</button>
-            <button id="cidr-clean-preset" class="px-2.5 py-1.5 rounded-lg bg-[var(--secondary)] text-[var(--secondary-foreground)] font-semibold cursor-pointer">Reset Clean Hub</button>
+          <div style="display:flex; gap:8px;">
+            <button id="cidr-broken-preset" class="btn btn-sm">Load Broken Exam Trap</button>
+            <button id="cidr-clean-preset" class="btn btn-sm">Reset Clean Hub</button>
           </div>
         </div>
 
-        <div class="space-y-2">
+        <div style="display:flex; flex-direction:column; gap:8px;">
           ${parsedSubs.map(s => {
             const ok = s.issues.length === 0;
             return `
-              <div class="bg-[var(--content)] border rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3" style="border-color: ${ok ? "var(--card-border)" : "var(--error)"};">
-                <div class="space-y-1">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-mono text-sm font-bold">${s.name}</span>
-                    <span class="px-2 py-0.5 rounded bg-[var(--card)] border border-[var(--border)] font-mono text-xs">${s.cidr}</span>
-                    <span class="text-xs font-bold" style="color: ${ok ? "var(--success)" : "var(--error)"};">${ok ? "✓ Valid" : "✗ Error"}</span>
+              <div style="padding:12px 14px; background:var(--bg-canvas); border:1px solid ${ok ? "var(--border-subtle)" : "var(--danger)"}; border-radius:var(--radius-md); display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <span class="mono" style="font-weight:700; font-size:13.5px;">${s.name}</span>
+                    <span class="badge mono">${s.cidr}</span>
+                    <span class="badge ${ok ? "badge-success" : "badge-danger"}">${ok ? "Valid" : "Conflict"}</span>
                   </div>
-                  ${s.info ? `<div class="text-xs text-[var(--muted-foreground)] font-mono">${s.info.startStr} → ${s.info.endStr} • Total: ${s.info.size} − <strong>5 Azure Reserved</strong> = <strong class="text-[var(--foreground)]">${s.info.usable} usable IPs</strong></div>` : ""}
-                  ${s.issues.length ? `<div class="text-xs font-semibold" style="color: var(--error);">${s.issues.join(" • ")}</div>` : ""}
+                  ${s.info ? `<div class="mono" style="font-size:12px; color:var(--text-secondary);">${s.info.startStr} → ${s.info.endStr} • Total: ${s.info.size} − <strong>5 Azure Reserved</strong> = <strong style="color:var(--text-primary);">${s.info.usable} usable IPs</strong></div>` : ""}
+                  ${s.issues.length ? `<div style="font-size:12px; font-weight:600; color:var(--danger);">${s.issues.join(" • ")}</div>` : ""}
                 </div>
-                <button data-del-sub="${s.idx}" class="text-xs px-2.5 py-1 rounded bg-[var(--card)] border border-[var(--border)] hover:text-[var(--error)] cursor-pointer self-start sm:self-center">Remove</button>
+                <button data-del-sub="${s.idx}" class="btn btn-sm">Remove</button>
               </div>
             `;
           }).join("")}
         </div>
 
-        <form id="add-sub-form" class="flex flex-wrap gap-2 items-center bg-[var(--content)] border border-[var(--card-border)] rounded-xl p-3 text-xs">
-          <input name="name" placeholder="Subnet name (e.g. snet-pe)" required class="px-2.5 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] w-48" />
-          <input name="cidr" placeholder="CIDR (e.g. 10.0.5.0/26)" required class="px-2.5 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] font-mono text-[var(--foreground)] w-44" />
-          <button type="submit" class="px-3.5 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold cursor-pointer">+ Add Subnet</button>
+        <form id="add-sub-form" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:12px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md);">
+          <input name="name" placeholder="Subnet name (e.g. snet-pe)" required class="input" style="width:200px;" />
+          <input name="cidr" placeholder="CIDR (e.g. 10.0.5.0/26)" required class="input mono" style="width:175px;" />
+          <button type="submit" class="btn btn-primary btn-sm">+ Add Subnet</button>
         </form>
       </div>
     `;
@@ -580,5 +553,5 @@ window.AZ104_SIMS = (function () {
     });
   }
 
-  return { render };
+  return { render, setSim };
 })();

@@ -3,358 +3,470 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AZ-104 Ops Quest — Northstar Retail Interactive Study Hub</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    :root {
-      --background: #0b1120;
-      --content: #111827;
-      --card: #161f33;
-      --border: #28354d;
-      --card-border: #233047;
-      --foreground: #f1f5f9;
-      --muted-foreground: #94a3b8;
-      --primary: #3b82f6;
-      --primary-foreground: #ffffff;
-      --secondary: #1e293b;
-      --secondary-foreground: #e2e8f0;
-      --link: #60a5fa;
-      --success: #22c55e;
-      --warning: #f59e0b;
-      --error: #ef4444;
-      --code-foreground: #93c5fd;
-      --chart-1: #a78bfa;
-      --chart-2: #38bdf8;
-      --chart-3: #34d399;
-      --chart-4: #fbbf24;
-      --chart-5: #fb7185;
-    }
-    html.light {
-      --background: #f8fafc;
-      --content: #f1f5f9;
-      --card: #ffffff;
-      --border: #cbd5e1;
-      --card-border: #e2e8f0;
-      --foreground: #0f172a;
-      --muted-foreground: #475569;
-      --primary: #2563eb;
-      --primary-foreground: #ffffff;
-      --secondary: #e2e8f0;
-      --secondary-foreground: #1e293b;
-      --link: #2563eb;
-      --success: #16a34a;
-      --warning: #d97706;
-      --error: #dc2626;
-      --code-foreground: #1d4ed8;
-      --chart-1: #7c3aed;
-      --chart-2: #0284c7;
-      --chart-3: #059669;
-      --chart-4: #d97706;
-      --chart-5: #e11d48;
-    }
-    body {
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    .node-card { transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease; }
-    .node-card:hover { transform: translateY(-2px); }
-    .node-selected { box-shadow: 0 0 0 2px var(--primary); border-color: var(--primary) !important; }
-    .node-connected { border-color: var(--chart-2) !important; }
-    .node-dimmed { opacity: 0.42; }
-    .conn-line { transition: stroke-opacity 180ms ease, stroke-width 180ms ease; }
-    .tab-active { background-color: var(--primary); color: var(--primary-foreground); }
-    .tab-inactive { background-color: transparent; color: var(--muted-foreground); }
-    .tab-inactive:hover { background-color: var(--secondary); color: var(--foreground); }
-  </style>
+  <title>AZ-104 Study Workspace — Northstar Retail Architecture &amp; Lab Guide</title>
+  <meta name="description" content="Structured AZ-104 Azure Administrator study workspace with per-domain readiness diagnostics, step-by-step Portal and CLI lab guides, official Microsoft lab links, multi-domain integration capstones, and interactive simulators." />
+  <link rel="stylesheet" href="css/styles.css" />
 </head>
-<body class="bg-[var(--background)] text-[var(--foreground)] antialiased m-0 p-0">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+<body>
+  <!-- Mobile Top Bar -->
+  <div class="mobile-topbar">
+    <div>
+      <div style="font-weight:700; font-size:14.5px;">AZ-104 Workspace</div>
+      <div style="font-size:11.5px; color:var(--text-secondary);">Northstar Retail Lab System</div>
+    </div>
+    <button id="mobile-menu-btn" class="btn btn-sm">Menu</button>
+  </div>
 
-    <!-- Top Header + Streak + 5-Min Rescue + 25-Min Timer + Theme/Sync -->
-    <header class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-4">
-      <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-        <div class="space-y-1">
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--primary)] text-[var(--primary-foreground)]">AZ-104 Ops Quest</span>
-            <span id="rank-pill" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--secondary)] text-[var(--secondary-foreground)]">Rank 1: Day-One Intern</span>
-            <span class="text-xs text-[var(--muted-foreground)]">Post-Jan 2027 • 81/81 MS Objectives</span>
+  <div class="app-shell">
+    <!-- Left Sidebar -->
+    <aside id="app-sidebar" class="sidebar">
+      <div>
+        <div class="sidebar-brand">
+          <div class="brand-title">
+            <span>AZ-104 Workspace</span>
+            <span id="sidebar-readiness-pill" class="badge badge-accent mono">0%</span>
           </div>
-          <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Northstar Retail — Build, Simulate &amp; Defend Azure</h1>
-          <p class="text-sm text-[var(--muted-foreground)]">Hands-on simulators, runnable lab scripts, 20 P1 incidents, 8 sabotage hunts, exam case studies &amp; spaced repetition.</p>
+          <div class="brand-sub">Northstar Retail • Post-Jan 2027</div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2.5 shrink-0">
-          <!-- 5-Min Rescue Button -->
-          <button id="btn-rescue" class="px-3 py-2 rounded-lg text-xs font-bold cursor-pointer border" style="background: var(--content); border-color: var(--warning); color: var(--warning);" title="Exhausted? Save your streak in under 5 minutes!">⚡ 5-Min Rescue</button>
+        <div class="nav-list" role="navigation" aria-label="Primary Views">
+          <div class="nav-section-label">Workspace</div>
+          <button data-view="overview" class="nav-btn active">
+            <span class="nav-btn-left">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+              <span>Overview &amp; Readiness</span>
+            </span>
+          </button>
 
-          <!-- Streak Pill -->
-          <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-lg px-3 py-1.5 text-center">
-            <div class="text-xs text-[var(--muted-foreground)]">Streak</div>
-            <div id="streak-display" class="text-sm font-mono font-bold">0d 🔥</div>
+          <button data-view="plan" class="nav-btn">
+            <span class="nav-btn-left">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              <span>Study Plan &amp; Labs</span>
+            </span>
+            <span id="nav-plan-count" class="nav-count">0/40</span>
+          </button>
+
+          <button data-view="practice" class="nav-btn">
+            <span class="nav-btn-left">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              <span>Practice Studio</span>
+            </span>
+            <span id="nav-practice-count" class="nav-count">0/20</span>
+          </button>
+
+          <button data-view="blueprint" class="nav-btn">
+            <span class="nav-btn-left">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              <span>Official Blueprint</span>
+            </span>
+            <span id="nav-bp-count" class="nav-count">0/81</span>
+          </button>
+
+          <div class="nav-section-label">Official Microsoft Links</div>
+          <a href="https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-104" target="_blank" rel="noopener" class="nav-btn">
+            <span class="nav-btn-left"><span>MS AZ-104 Study Guide</span></span>
+            <span style="font-size:11px;">↗</span>
+          </a>
+          <a href="https://microsoftlearning.github.io/AZ-104-MicrosoftAzureAdministrator/" target="_blank" rel="noopener" class="nav-btn">
+            <span class="nav-btn-left"><span>All 14 Official MS Labs</span></span>
+            <span style="font-size:11px;">↗</span>
+          </a>
+          <a href="https://learn.microsoft.com/en-us/credentials/certifications/azure-administrator/" target="_blank" rel="noopener" class="nav-btn">
+            <span class="nav-btn-left"><span>Practice Assessment</span></span>
+            <span style="font-size:11px;">↗</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Sidebar Footer: Focus Timer, Quick Drill, Theme & Sync -->
+      <div class="sidebar-footer">
+        <div class="timer-box">
+          <div>
+            <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">25m Focus Sprint</div>
+            <div id="timer-display" class="timer-readout">25:00</div>
           </div>
-
-          <!-- 25-Min Timer -->
-          <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-lg px-3 py-1.5 flex items-center gap-2.5">
-            <div>
-              <div class="text-xs text-[var(--muted-foreground)]">Sprint</div>
-              <div id="timer-display" class="text-sm font-mono font-bold tabular-nums">25:00</div>
-            </div>
-            <button id="timer-toggle" class="px-2 py-1 rounded text-xs font-semibold bg-[var(--primary)] text-[var(--primary-foreground)] cursor-pointer">Start</button>
-            <button id="timer-reset" class="px-2 py-1 rounded text-xs bg-[var(--secondary)] text-[var(--secondary-foreground)] cursor-pointer">Reset</button>
+          <div style="display:flex; gap:4px;">
+            <button id="timer-toggle" class="btn btn-primary btn-sm">Start</button>
+            <button id="timer-reset" class="btn btn-sm">Reset</button>
           </div>
+        </div>
 
-          <!-- XP Pill -->
-          <div class="bg-[var(--content)] border border-[var(--card-border)] rounded-lg px-3 py-1.5 text-right">
-            <div class="text-xs text-[var(--muted-foreground)]">XP</div>
-            <div class="text-sm font-mono font-bold tabular-nums"><span id="xp-display">0</span></div>
-          </div>
+        <button id="btn-rescue" class="btn" style="width:100%; justify-content:space-between;">
+          <span>5-Min Quick Drill</span>
+          <span class="badge badge-warning">Low-Energy Day</span>
+        </button>
 
-          <!-- Theme & Sync -->
-          <button id="theme-toggle" class="px-2.5 py-2 rounded-lg text-xs font-semibold bg-[var(--content)] border border-[var(--card-border)] cursor-pointer hover:bg-[var(--secondary)]">☀ Light</button>
-          <button id="btn-export" class="px-2.5 py-2 rounded-lg text-xs font-medium bg-[var(--content)] border border-[var(--card-border)] cursor-pointer hover:bg-[var(--secondary)]" title="Export progress JSON">Export</button>
-          <button id="btn-import" class="px-2.5 py-2 rounded-lg text-xs font-medium bg-[var(--content)] border border-[var(--card-border)] cursor-pointer hover:bg-[var(--secondary)]" title="Import progress JSON">Import</button>
+        <div style="display:flex; gap:6px;">
+          <button id="theme-toggle" class="btn btn-sm" style="flex:1;">Light Theme</button>
+          <button id="btn-export" class="btn btn-sm" title="Export progress JSON">Export</button>
+          <button id="btn-import" class="btn btn-sm" title="Import progress JSON">Import</button>
           <input id="import-file" type="file" accept="application/json" class="hidden" />
         </div>
       </div>
+    </aside>
 
-      <!-- XP Progress Bar + Quick Official Microsoft Links -->
-      <div class="pt-3 border-t border-[var(--card-border)] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <div class="flex-1 max-w-md space-y-1">
-          <div class="flex items-center justify-between text-xs">
-            <span id="next-rank-label" class="text-[var(--muted-foreground)]">Next: Junior Cloud Admin (250 XP)</span>
-            <span class="font-mono text-[var(--muted-foreground)]"><span id="total-done">0</span>/40 sprints</span>
+    <!-- Main Workspace -->
+    <main class="main-workspace">
+
+      <!-- ================================================================= -->
+      <!-- VIEW 1: OVERVIEW & DOMAIN READINESS TRACKER                       -->
+      <!-- ================================================================= -->
+      <section id="view-overview" class="view-section">
+        <header class="page-header">
+          <div>
+            <h1 class="page-title">Exam Readiness &amp; Domain Diagnostics</h1>
+            <p class="page-desc">Blends your 81-objective Microsoft Study Guide coverage (30%), hands-on labs &amp; capstones (30%), and troubleshooting &amp; mock exam accuracy (40%) weighted by official AZ-104 domain percentages.</p>
           </div>
-          <div class="w-full h-2 rounded-full bg-[var(--secondary)] overflow-hidden">
-            <div id="xp-bar" class="h-full rounded-full transition-all" style="width: 0%; background: var(--primary);"></div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="btn-open-mock-modal" class="btn">+ Log Practice Exam Score</button>
+            <button id="btn-jump-plan" class="btn btn-primary">Go to Study Plan &amp; Labs →</button>
+          </div>
+        </header>
+
+        <!-- 4 Top Summary Metrics -->
+        <div class="metrics-grid">
+          <div class="metric-box">
+            <div class="metric-label">Overall Exam Readiness</div>
+            <div id="ov-readiness-pct" class="metric-value">0%</div>
+            <div id="ov-scaled-est" class="metric-foot">Est. score: 300 / 1000 (Pass: 700)</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Official Blueprint Covered</div>
+            <div id="ov-bp-progress" class="metric-value">0 / 81</div>
+            <div class="metric-foot">Verified Oct 30, 2026 MS Study Guide</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Integration Capstones</div>
+            <div id="ov-cap-progress" class="metric-value">0 / 4</div>
+            <div class="metric-foot">Multi-domain connected Azure labs</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Consistency Streak</div>
+            <div id="ov-streak" class="metric-value">0 days</div>
+            <div class="metric-foot">Weekends never break your streak</div>
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2 text-xs">
-          <span class="text-[var(--muted-foreground)] font-semibold">Official MS:</span>
-          <a href="https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-104" target="_blank" rel="noopener" class="px-2.5 py-1 rounded-md bg-[var(--content)] border border-[var(--card-border)] text-[var(--link)] hover:underline">Study Guide</a>
-          <a href="https://learn.microsoft.com/en-us/credentials/certifications/azure-administrator/" target="_blank" rel="noopener" class="px-2.5 py-1 rounded-md bg-[var(--content)] border border-[var(--card-border)] text-[var(--link)] hover:underline">Exam &amp; Practice Assessment</a>
-          <a href="https://github.com/MicrosoftLearning/AZ-104-MicrosoftAzureAdministrator" target="_blank" rel="noopener" class="px-2.5 py-1 rounded-md bg-[var(--content)] border border-[var(--card-border)] text-[var(--link)] hover:underline">MS GitHub Labs</a>
-          <a href="https://learn.microsoft.com/en-us/credentials/support/exam-duration-exam-experience" target="_blank" rel="noopener" class="px-2.5 py-1 rounded-md bg-[var(--content)] border border-[var(--card-border)] text-[var(--link)] hover:underline">Open-Book Rules</a>
-        </div>
-      </div>
-    </header>
+        <!-- "Where You Need the Most Work" Diagnostic Card -->
+        <div id="ov-weakspot-panel" class="panel" style="margin-bottom:24px;"></div>
 
-    <!-- 7 Main Navigation Tabs -->
-    <nav class="flex flex-wrap gap-1.5 border-b border-[var(--border)] pb-3" role="tablist">
-      <button data-tab="map" class="tab-btn tab-active px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer">1. Connected Map</button>
-      <button data-tab="sprints" class="tab-btn tab-inactive px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer">2. 8-Week Episodes</button>
-      <button data-tab="simulators" class="tab-btn tab-inactive px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer">3. Azure Simulators</button>
-      <button data-tab="incidents" class="tab-btn tab-inactive px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer">4. P1 &amp; Bug Hunts <span id="incident-badge" class="ml-1 px-1.5 py-0.5 rounded text-xs font-mono bg-[var(--secondary)] text-[var(--secondary-foreground)]">0/20</span></button>
-      <button data-tab="speedrun" class="tab-btn tab-inactive px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer">5. Speed Run &amp; Review <span id="best-badge" class="ml-1 px-1.5 py-0.5 rounded text-xs font-mono bg-[var(--secondary)] text-[var(--secondary-foreground)]">Best: 0</span> <span id="missed-badge" class="ml-0.5 px-1.5 py-0.5 rounded text-xs font-mono bg-[var(--secondary)] text-[var(--secondary-foreground)]">0 missed</span></button>
-      <button data-tab="examlab" class="tab-btn tab-inactive px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer">6. Exam Lab</button>
-      <button data-tab="blueprint" class="tab-btn tab-inactive px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer">7. MS Blueprint <span id="blueprint-badge" class="ml-1 px-1.5 py-0.5 rounded text-xs font-mono bg-[var(--secondary)] text-[var(--secondary-foreground)]">0/81</span></button>
-    </nav>
-
-    <!-- TAB 1: ARCHITECTURE MAP -->
-    <section id="tab-map" class="tab-panel space-y-4">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        <div class="lg:col-span-7 bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 space-y-4">
-          <div class="flex items-center justify-between flex-wrap gap-2">
+        <!-- Per-Domain Mastery Matrix -->
+        <div class="panel" style="margin-bottom:24px;">
+          <div class="panel-header">
             <div>
-              <h2 class="text-base font-bold">Northstar Retail — Live Topology</h2>
-              <p class="text-xs text-[var(--muted-foreground)]">Click any block to illuminate how AZ-104 domains connect.</p>
+              <h2 class="panel-title">Per-Domain Mastery Breakdown</h2>
+              <div class="panel-sub">Shows exact progress across all 5 official AZ-104 exam domains and where points are won or lost.</div>
             </div>
-            <div class="flex items-center gap-2 text-xs flex-wrap">
-              <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background: var(--chart-1);"></span>Identity</span>
-              <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background: var(--chart-2);"></span>Network</span>
-              <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background: var(--chart-3);"></span>Compute</span>
-              <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background: var(--chart-4);"></span>Storage</span>
-              <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background: var(--chart-5);"></span>Monitor</span>
-            </div>
+            <span class="badge">Target: 75%+ in every domain</span>
           </div>
+          <div id="ov-domain-rows" class="divider-list"></div>
+        </div>
 
-          <div id="arch-stage" class="relative bg-[var(--content)] border border-[var(--card-border)] rounded-xl p-4 space-y-4">
-            <svg id="arch-svg" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;"></svg>
+        <!-- Logged External Practice Exams Panel -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Practice Assessment &amp; Mock Exam Log</h2>
+              <div class="panel-sub">Log scores from Microsoft's AI Skills Navigator Practice Assessment, Tutorials Dojo, or MeasureUp to calibrate your domain readiness.</div>
+            </div>
+            <button id="btn-open-mock-modal-2" class="btn btn-sm">+ Log Attempt</button>
+          </div>
+          <div id="ov-mock-history" class="panel-body"></div>
+        </div>
+      </section>
 
-            <div class="relative" style="z-index: 2;">
-              <div class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Control Plane &amp; Guardrails</div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button data-node="entra" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
-                  <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold" style="color: var(--chart-1);">Identity • Wk 1</span><span class="text-xs font-mono text-[var(--muted-foreground)]">20–25%</span></div>
-                  <div class="text-sm font-bold mt-0.5">Entra ID + RBAC + Managed ID</div>
-                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Users, groups, SSPR, role scopes &amp; passwordless auth</div>
-                </button>
-                <button data-node="governance" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
-                  <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold" style="color: var(--chart-1);">Governance • Wk 1</span><span class="text-xs font-mono text-[var(--muted-foreground)]">20–25%</span></div>
-                  <div class="text-sm font-bold mt-0.5">Policy, Locks &amp; Cost Budgets</div>
-                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Allowed regions, tags, CanNotDelete locks &amp; $10 budget</div>
-                </button>
+      <!-- ================================================================= -->
+      <!-- VIEW 2: STUDY PLAN, STEP-BY-STEP GUIDES & MULTI-DOMAIN LABS       -->
+      <!-- ================================================================= -->
+      <section id="view-plan" class="view-section hidden">
+        <header class="page-header">
+          <div>
+            <h1 class="page-title">Study Plan &amp; Connected Lab Guides</h1>
+            <p class="page-desc">Click <strong>Step-by-Step Guide</strong> on any day or capstone lab to open exact Azure Portal steps, copyable CLI/Bicep commands, verification checks, and direct links to Microsoft's 14 official hosted HTML labs.</p>
+          </div>
+          <div class="segmented" role="tablist">
+            <button data-plan-sub="steady" class="seg-btn active">8-Week Plan (40d)</button>
+            <button data-plan-sub="blitz" class="seg-btn">3-Week Blitz (21d)</button>
+            <button data-plan-sub="capstones" class="seg-btn">4 Multi-Domain Capstones</button>
+            <button data-plan-sub="topology" class="seg-btn">Architecture Map</button>
+          </div>
+        </header>
+
+        <!-- Sub-view A: 8-Week Steady OR 3-Week Blitz -->
+        <div id="plan-schedule-container" style="display:flex; flex-direction:column; gap:14px;"></div>
+
+        <!-- Sub-view B: 4 Multi-Domain Integration Capstone Labs -->
+        <div id="plan-capstones-container" class="hidden" style="display:flex; flex-direction:column; gap:16px;"></div>
+
+        <!-- Sub-view C: Interactive Northstar Architecture Map -->
+        <div id="plan-topology-container" class="hidden">
+          <div class="topo-layout">
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">Northstar Retail — Connected Azure Topology</div>
+                  <div class="panel-sub">Click any service block to inspect how it wires into other AZ-104 domains.</div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div id="arch-stage" style="position:relative; padding:16px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:16px;">
+                  <svg id="arch-svg" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1;"></svg>
+
+                  <div>
+                    <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-tertiary); margin-bottom:8px;">Control Plane &amp; Guardrails</div>
+                    <div class="topo-grid-2">
+                      <button data-node="entra" class="node-card">
+                        <div style="display:flex; justify-content:space-between; font-size:11.5px;"><span style="color:var(--chart-1); font-weight:700;">Identity • Wk 1</span><span class="mono" style="color:var(--text-secondary);">20–25%</span></div>
+                        <div style="font-weight:700; font-size:13.5px; margin-top:3px;">Entra ID + RBAC + Managed ID</div>
+                        <div style="font-size:12px; color:var(--text-secondary); margin-top:3px;">Users, groups, SSPR, role scopes &amp; passwordless auth</div>
+                      </button>
+                      <button data-node="governance" class="node-card">
+                        <div style="display:flex; justify-content:space-between; font-size:11.5px;"><span style="color:var(--chart-1); font-weight:700;">Governance • Wk 1</span><span class="mono" style="color:var(--text-secondary);">20–25%</span></div>
+                        <div style="font-weight:700; font-size:13.5px; margin-top:3px;">Policy, Locks &amp; Cost Budgets</div>
+                        <div style="font-size:12px; color:var(--text-secondary); margin-top:3px;">Allowed regions, tags, CanNotDelete locks &amp; $10 budget</div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-tertiary); margin-bottom:8px;">Hub VNet (10.0.0.0/16) — Ingress &amp; Bastion</div>
+                    <div class="topo-grid-2">
+                      <button data-node="ingress" class="node-card">
+                        <div style="display:flex; justify-content:space-between; font-size:11.5px;"><span style="color:var(--chart-2); font-weight:700;">Networking • Wk 6</span><span class="mono" style="color:var(--text-secondary);">15–20%</span></div>
+                        <div style="font-weight:700; font-size:13.5px; margin-top:3px;">Load Balancer &amp; Azure DNS</div>
+                        <div style="font-size:12px; color:var(--text-secondary); margin-top:3px;">Internal/Public Standard LB, health probes &amp; DNS zones</div>
+                      </button>
+                      <button data-node="bastion" class="node-card">
+                        <div style="display:flex; justify-content:space-between; font-size:11.5px;"><span style="color:var(--chart-2); font-weight:700;">Networking • Wk 2 &amp; 6</span><span class="mono" style="color:var(--text-secondary);">15–20%</span></div>
+                        <div style="font-weight:700; font-size:13.5px; margin-top:3px;">Hub Peering, UDR &amp; Bastion</div>
+                        <div style="font-size:12px; color:var(--text-secondary); margin-top:3px;">Zero public IPs on VMs, hub-spoke peering &amp; custom routes</div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-tertiary); margin-bottom:8px;">Spoke VNets (Peered — Non-Transitive)</div>
+                    <div class="topo-grid-2">
+                      <button data-node="compute" class="node-card">
+                        <div style="display:flex; justify-content:space-between; font-size:11.5px;"><span style="color:var(--chart-3); font-weight:700;">Compute • Wk 4 &amp; 5</span><span class="mono" style="color:var(--text-secondary);">20–25%</span></div>
+                        <div style="font-weight:700; font-size:13.5px; margin-top:3px;">App Spoke (10.1.0.0/16)</div>
+                        <div style="font-size:12px; color:var(--text-secondary); margin-top:3px;">Bicep VMs, VMSS, App Service, ACR/ACI/ACA + 2-Gate NSGs</div>
+                      </button>
+                      <button data-node="storage" class="node-card">
+                        <div style="display:flex; justify-content:space-between; font-size:11.5px;"><span style="color:var(--chart-4); font-weight:700;">Storage • Wk 3</span><span class="mono" style="color:var(--text-secondary);">15–20%</span></div>
+                        <div style="font-weight:700; font-size:13.5px; margin-top:3px;">Data Spoke + Private Endpoint</div>
+                        <div style="font-size:12px; color:var(--text-secondary); margin-top:3px;">Blob tiers, Object Rep, Azure Files, SAS vs RBAC, Private DNS</div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-tertiary); margin-bottom:8px;">Observability &amp; Recovery</div>
+                    <div class="topo-grid-2">
+                      <button data-node="monitor" class="node-card">
+                        <div style="display:flex; justify-content:space-between; font-size:11.5px;"><span style="color:var(--chart-5); font-weight:700;">Monitoring • Wk 7</span><span class="mono" style="color:var(--text-secondary);">10–15%</span></div>
+                        <div style="font-weight:700; font-size:13.5px; margin-top:3px;">Azure Monitor &amp; Network Watcher</div>
+                        <div style="font-size:12px; color:var(--text-secondary); margin-top:3px;">Log Analytics, Insights, Alert Processing Rules, IP Flow Verify</div>
+                      </button>
+                      <button data-node="backup" class="node-card">
+                        <div style="display:flex; justify-content:space-between; font-size:11.5px;"><span style="color:var(--chart-5); font-weight:700;">Recovery • Wk 7</span><span class="mono" style="color:var(--text-secondary);">10–15%</span></div>
+                        <div style="font-weight:700; font-size:13.5px; margin-top:3px;">Recovery &amp; Backup Vaults</div>
+                        <div style="font-size:12px; color:var(--text-secondary); margin-top:3px;">VM/Files Backup, Azure Backup Vault, Soft Delete &amp; ASR</div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div class="relative" style="z-index: 2;">
-              <div class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Hub VNet (10.0.0.0/16) — Ingress &amp; Secure Admin</div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button data-node="ingress" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
-                  <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold" style="color: var(--chart-2);">Networking • Wk 6</span><span class="text-xs font-mono text-[var(--muted-foreground)]">15–20%</span></div>
-                  <div class="text-sm font-bold mt-0.5">Load Balancer &amp; Azure DNS</div>
-                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Internal/Public Standard LB, probes &amp; DNS zones</div>
-                </button>
-                <button data-node="bastion" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
-                  <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold" style="color: var(--chart-2);">Networking • Wk 2 &amp; 6</span><span class="text-xs font-mono text-[var(--muted-foreground)]">15–20%</span></div>
-                  <div class="text-sm font-bold mt-0.5">Hub Peering, UDR &amp; Bastion</div>
-                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Zero public IPs on VMs, peering &amp; custom routes</div>
-                </button>
-              </div>
+            <div id="node-inspector" class="panel panel-body"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================= -->
+      <!-- VIEW 3: PRACTICE STUDIO & SIMULATORS                              -->
+      <!-- ================================================================= -->
+      <section id="view-practice" class="view-section hidden">
+        <header class="page-header">
+          <div>
+            <h1 class="page-title">Practice Studio &amp; Simulators</h1>
+            <p class="page-desc">Every incident ticket, bug hunt, case study, and speed-run answer automatically updates your Domain Mastery diagnostic in Overview.</p>
+          </div>
+          <div class="segmented" role="tablist">
+            <button data-prac-sub="tickets" class="seg-btn active">P1 Incidents (20)</button>
+            <button data-prac-sub="bughunts" class="seg-btn">Code Bug Hunts (8)</button>
+            <button data-prac-sub="simulators" class="seg-btn">Azure Simulators (3)</button>
+            <button data-prac-sub="casestudies" class="seg-btn">Case Studies (2)</button>
+            <button data-prac-sub="scavenger" class="seg-btn">Open-Book 45s (10)</button>
+            <button data-prac-sub="speedrun" class="seg-btn">Speed Run (36)</button>
+          </div>
+        </header>
+
+        <!-- Practice 1: 20 P1 Incidents -->
+        <div id="prac-tickets" class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">P1 Troubleshooting Queue</div>
+              <div class="panel-sub">Diagnose broken multi-domain Azure configurations. Click the official Microsoft Learn proof link after each ticket.</div>
             </div>
+            <span id="inc-score" class="badge mono">0 / 20 solved</span>
+          </div>
+          <div class="panel-body" style="display:flex; flex-direction:column; gap:16px;">
+            <div id="ticket-filters" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+            <div id="ticket-pills" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+            <div id="ticket-view" style="display:flex; flex-direction:column; gap:14px;"></div>
+          </div>
+        </div>
 
-            <div class="relative" style="z-index: 2;">
-              <div class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Spoke VNets (Peered to Hub — Non-Transitive!)</div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button data-node="compute" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
-                  <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold" style="color: var(--chart-3);">Compute • Wk 4 &amp; 5</span><span class="text-xs font-mono text-[var(--muted-foreground)]">20–25%</span></div>
-                  <div class="text-sm font-bold mt-0.5">App Spoke (10.1.0.0/16)</div>
-                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Bicep VMs, VMSS, App Service, ACR/ACI/ACA + NSGs</div>
-                </button>
-                <button data-node="storage" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
-                  <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold" style="color: var(--chart-4);">Storage • Wk 3</span><span class="text-xs font-mono text-[var(--muted-foreground)]">15–20%</span></div>
-                  <div class="text-sm font-bold mt-0.5">Data Spoke + Private Endpoint</div>
-                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Blob tiers, Object Rep, Azure Files, SAS vs RBAC, DNS</div>
-                </button>
-              </div>
+        <!-- Practice 2: 8 Spot-the-2-Bugs Hunts -->
+        <div id="prac-bughunts" class="panel hidden">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Code &amp; Config Sabotage Hunts ("Spot the 2 Bugs")</div>
+              <div class="panel-sub">Click the 2 buggy lines in each Bicep, Azure CLI, NSG table, or Custom RBAC JSON snippet.</div>
             </div>
+            <span id="bh-score" class="badge mono">0 / 8 defused</span>
+          </div>
+          <div class="panel-body" style="display:flex; flex-direction:column; gap:16px;">
+            <div id="bh-pills" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+            <div id="bh-view"></div>
+          </div>
+        </div>
 
-            <div class="relative" style="z-index: 2;">
-              <div class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Operations, Telemetry &amp; Resilience</div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button data-node="monitor" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
-                  <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold" style="color: var(--chart-5);">Monitoring • Wk 7</span><span class="text-xs font-mono text-[var(--muted-foreground)]">10–15%</span></div>
-                  <div class="text-sm font-bold mt-0.5">Azure Monitor &amp; Network Watcher</div>
-                  <div class="text-xs text-[var(--muted-foreground)] mt-1">Log Analytics, Insights, Alert Processing Rules, IP Flow</div>
-                </button>
-                <button data-node="backup" class="node-card text-left bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 cursor-pointer">
-                  <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold" style="color: var(--chart-5);">Recovery • Wk 7</span><span class="text-xs font-mono text-[var(--muted-foreground)]">10–15%</span></div>
-                  <div class="text-sm font-bold mt-0.5">Recovery &amp; Backup Vaults</div>
-                  <div class="text-xs text-[var(--muted-foreground)] mt-1">VM/Files Backup, Azure Backup Vault, Soft Delete &amp; ASR</div>
-                </button>
-              </div>
+        <!-- Practice 3: 3 Interactive Azure Simulators -->
+        <div id="prac-simulators" class="hidden">
+          <div id="simulators-root"></div>
+        </div>
+
+        <!-- Practice 4: 2 Multi-Tab Exam Case Studies -->
+        <div id="prac-casestudies" class="panel hidden">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Authentic Multi-Tab AZ-104 Exam Case Studies</div>
+              <div class="panel-sub">Practice reading Overview, Current Environment, Planned Changes, and Requirements tabs like the real exam.</div>
             </div>
           </div>
+          <div id="cs-root" class="panel-body" style="display:flex; flex-direction:column; gap:16px;"></div>
         </div>
 
-        <div id="node-inspector" class="lg:col-span-5 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-4"></div>
-      </div>
-    </section>
+        <!-- Practice 5: 10 Open-Book 45s Microsoft Learn Lookups -->
+        <div id="prac-scavenger" class="panel hidden">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Open-Book 45-Second Microsoft Learn Scavenger Hunts</div>
+              <div class="panel-sub">AZ-104 gives you built-in Microsoft Learn access with no extra clock time. Train fast SKU &amp; limit lookups.</div>
+            </div>
+          </div>
+          <div id="scav-root" class="panel-body" style="display:flex; flex-direction:column; gap:16px;"></div>
+        </div>
 
-    <!-- TAB 2: 8-WEEK EPISODES -->
-    <section id="tab-sprints" class="tab-panel hidden space-y-5">
-      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 space-y-3">
-        <div class="flex items-center justify-between flex-wrap gap-2">
+        <!-- Practice 6: 60s Exam Trap Speed Run & Spaced Repetition Queue -->
+        <div id="prac-speedrun" class="panel hidden">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">60-Second Exam Trap Speed Run &amp; Missed-Trap Queue</div>
+              <div class="panel-sub">Every trap you miss is saved automatically into your Spaced-Repetition Rematch Queue.</div>
+            </div>
+            <div style="display:flex; gap:8px;" class="mono">
+              <span class="badge">Time: <strong id="sr-time" style="margin-left:4px;">60s</strong></span>
+              <span class="badge">Score: <strong id="sr-score" style="margin-left:4px;">0</strong></span>
+              <span class="badge">Streak: <strong id="sr-streak" style="margin-left:4px;">0</strong></span>
+            </div>
+          </div>
+          <div class="panel-body" style="display:flex; flex-direction:column; gap:16px;">
+            <div id="weakness-radar"></div>
+            <div id="sr-stage"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================= -->
+      <!-- VIEW 4: OFFICIAL MICROSOFT STUDY GUIDE BLUEPRINT (81/81)          -->
+      <!-- ================================================================= -->
+      <section id="view-blueprint" class="view-section hidden">
+        <header class="page-header">
           <div>
-            <h2 class="text-base font-bold">Official AZ-104 Exam Blueprint Coverage</h2>
-            <p class="text-xs text-[var(--muted-foreground)]">Each episode links to runnable starter &amp; sabotage scripts in <code class="font-mono">labs/</code>. Check sprints to earn +25 XP &amp; extend your streak.</p>
+            <h1 class="page-title">Official Microsoft Learn AZ-104 Study Guide (81 Objectives)</h1>
+            <p class="page-desc">100% of the skills measured from <a href="https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-104" target="_blank" rel="noopener">Microsoft's official AZ-104 Study Guide</a> (verified Oct 30, 2026). Checking objectives directly updates your Domain Mastery score.</p>
           </div>
-          <button id="reset-progress" class="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] underline cursor-pointer">Reset checkboxes</button>
-        </div>
-        <div id="domain-bars" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"></div>
-      </div>
-      <div id="weeks-container" class="space-y-3"></div>
-    </section>
+          <input id="bp-search" type="search" placeholder="Search 81 objectives (e.g. Bicep, DNS, ASR)..." class="input" style="width:270px;" />
+        </header>
 
-    <!-- TAB 3: INTERACTIVE AZURE SIMULATORS -->
-    <section id="tab-simulators" class="tab-panel hidden">
-      <div id="simulators-root"></div>
-    </section>
+        <div id="bp-filters" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;"></div>
+        <div id="bp-list" style="display:flex; flex-direction:column; gap:16px;"></div>
+      </section>
 
-    <!-- TAB 4: P1 INCIDENTS (20) & SPOT THE 2 BUGS (8) -->
-    <section id="tab-incidents" class="tab-panel hidden space-y-4">
-      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--card-border)] pb-3">
-          <div class="flex gap-2">
-            <button data-drill-sub="tickets" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer bg-[var(--primary)] text-[var(--primary-foreground)]">20 P1 Incident Tickets (+50 XP)</button>
-            <button data-drill-sub="bughunts" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer bg-[var(--content)] border border-[var(--card-border)] text-[var(--foreground)]">8 "Spot the 2 Bugs" Sabotage Hunts (+60 XP)</button>
-          </div>
-          <div class="text-xs font-mono text-[var(--muted-foreground)]">
-            Tickets: <strong id="inc-score">0 / 20</strong> • Bug Hunts: <strong id="bh-score">0 / 8</strong>
-          </div>
-        </div>
-
-        <div id="sub-tickets" class="space-y-4">
-          <div id="ticket-filters" class="flex flex-wrap gap-1.5"></div>
-          <div id="ticket-pills" class="flex flex-wrap gap-1.5"></div>
-          <div id="ticket-view" class="space-y-4 pt-1"></div>
-        </div>
-
-        <div id="sub-bughunts" class="hidden space-y-4">
-          <div id="bh-pills" class="flex flex-wrap gap-1.5"></div>
-          <div id="bh-view"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 5: 60s SPEED RUN + SPACED-REPETITION REVIEW -->
-    <section id="tab-speedrun" class="tab-panel hidden space-y-4">
-      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--card-border)] pb-3">
-          <div>
-            <h2 class="text-base font-bold">Weakness Radar &amp; 60-Second Exam Trap Speed Run</h2>
-            <p class="text-xs text-[var(--muted-foreground)]">36 authentic AZ-104 traps • automatic spaced-repetition review for every missed trap.</p>
-          </div>
-          <div class="flex items-center gap-2 font-mono text-xs">
-            <span class="px-2.5 py-1.5 rounded-lg bg-[var(--content)] border border-[var(--card-border)]">Time: <strong id="sr-time">60s</strong></span>
-            <span class="px-2.5 py-1.5 rounded-lg bg-[var(--content)] border border-[var(--card-border)]">Score: <strong id="sr-score">0</strong></span>
-            <span class="px-2.5 py-1.5 rounded-lg bg-[var(--content)] border border-[var(--card-border)]">Streak: <strong id="sr-streak">0🔥</strong></span>
-          </div>
-        </div>
-        <div id="weakness-radar" class="space-y-3"></div>
-        <div id="sr-stage" class="space-y-4"></div>
-      </div>
-    </section>
-
-    <!-- TAB 6: EXAM LAB (CASE STUDIES + OPEN-BOOK SCAVENGER HUNT) -->
-    <section id="tab-examlab" class="tab-panel hidden space-y-4">
-      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--card-border)] pb-3">
-          <div>
-            <h2 class="text-base font-bold">Real AZ-104 Exam Lab</h2>
-            <p class="text-xs text-[var(--muted-foreground)]">Train the two skills that surprise test-takers most: multi-tab Case Studies and 45-second Open-Book Microsoft Learn lookups.</p>
-          </div>
-          <div class="flex gap-2">
-            <button data-exam-sub="casestudies" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer bg-[var(--primary)] text-[var(--primary-foreground)]">2 Multi-Tab Case Studies</button>
-            <button data-exam-sub="scavenger" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer bg-[var(--content)] border border-[var(--card-border)] text-[var(--foreground)]">10 Open-Book 45s Hunts</button>
-          </div>
-        </div>
-        <div id="sub-casestudies"><div id="cs-root" class="space-y-4"></div></div>
-        <div id="sub-scavenger" class="hidden"><div id="scav-root" class="space-y-4"></div></div>
-      </div>
-    </section>
-
-    <!-- TAB 7: OFFICIAL MS STUDY GUIDE (81/81) -->
-    <section id="tab-blueprint" class="tab-panel hidden space-y-4">
-      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-4">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[var(--card-border)] pb-3">
-          <div>
-            <h2 class="text-base font-bold">Official Microsoft Learn AZ-104 Study Guide — 100% Coverage (81 Objectives)</h2>
-            <p class="text-xs text-[var(--muted-foreground)]">Every bullet from <a href="https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/az-104" target="_blank" rel="noopener" class="text-[var(--link)] hover:underline">Microsoft's official AZ-104 Study Guide</a> (verified Oct 30, 2026) mapped 1-to-1 to a Northstar sprint.</p>
-          </div>
-          <input id="bp-search" type="search" placeholder="Filter topics (e.g. Bicep, DNS, ASR)..." class="px-3 py-1.5 rounded-lg text-xs bg-[var(--content)] border border-[var(--card-border)] text-[var(--foreground)] w-60" />
-        </div>
-        <div id="bp-filters" class="flex flex-wrap gap-2"></div>
-        <div id="bp-list" class="space-y-4"></div>
-      </div>
-    </section>
+    </main>
   </div>
 
-  <!-- 5-Minute Low-Energy Rescue Modal -->
-  <div id="rescue-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.65);">
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-[var(--card-border)] pb-3">
+  <!-- Modal 1: Log Practice Exam Score -->
+  <div id="mock-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="panel-header">
         <div>
-          <div class="text-sm font-bold" style="color: var(--warning);">⚡ 5-Minute Low-Energy Rescue Sprint</div>
-          <div class="text-xs text-[var(--muted-foreground)]">Too tired for a lab? Beat 1 quick trap + 1 ticket to keep your streak alive!</div>
+          <div class="panel-title">Log Practice Assessment / Mock Exam Score</div>
+          <div class="panel-sub">Enter your domain scores (%) to calibrate your Overview Readiness &amp; Weak-Spot ranking.</div>
         </div>
-        <button id="rescue-close" class="px-2.5 py-1 rounded-lg bg-[var(--secondary)] text-[var(--secondary-foreground)] text-xs font-bold cursor-pointer">✕</button>
+        <button id="mock-modal-close" class="btn btn-sm">Close</button>
       </div>
-      <div id="rescue-body" class="space-y-4"></div>
+      <form id="mock-form" class="panel-body" style="display:flex; flex-direction:column; gap:12px;">
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12.5px;">
+          <span style="font-weight:600;">Assessment Source</span>
+          <select name="source" class="select">
+            <option value="MS AI Skills Navigator Practice Assessment">MS AI Skills Navigator Practice Assessment (Official)</option>
+            <option value="Tutorials Dojo AZ-104 Practice Exam">Tutorials Dojo AZ-104 Practice Exam</option>
+            <option value="MeasureUp Official Practice Test">MeasureUp Official Practice Test</option>
+            <option value="Custom Timed Mock Exam">Custom Timed Mock Exam</option>
+          </select>
+        </label>
+        <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;">
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span style="color:var(--text-secondary); font-weight:600;">Identities &amp; Gov % (20–25%)</span>
+            <input name="identity" type="number" min="0" max="100" value="70" required class="input mono" />
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span style="color:var(--text-secondary); font-weight:600;">Compute % (20–25%)</span>
+            <input name="compute" type="number" min="0" max="100" value="70" required class="input mono" />
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span style="color:var(--text-secondary); font-weight:600;">Virtual Networking % (15–20%)</span>
+            <input name="networking" type="number" min="0" max="100" value="65" required class="input mono" />
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span style="color:var(--text-secondary); font-weight:600;">Storage % (15–20%)</span>
+            <input name="storage" type="number" min="0" max="100" value="70" required class="input mono" />
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span style="color:var(--text-secondary); font-weight:600;">Monitor &amp; Backup % (10–15%)</span>
+            <input name="monitor" type="number" min="0" max="100" value="75" required class="input mono" />
+          </label>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; padding-top:8px;">
+          <button type="submit" class="btn btn-primary">Save Score to Readiness Tracker</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: 5-Minute Low-Energy Quick Drill -->
+  <div id="rescue-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">5-Minute Quick Drill (Low-Energy Day)</div>
+          <div class="panel-sub">Beat 1 priority trap + 1 troubleshooting ticket from your weakest domain to extend your study streak.</div>
+        </div>
+        <button id="rescue-close" class="btn btn-sm">Close</button>
+      </div>
+      <div id="rescue-body" class="panel-body" style="display:flex; flex-direction:column; gap:14px;"></div>
     </div>
   </div>
 
   <script src="js/data-core.js"></script>
   <script src="js/data-drills.js"></script>
+  <script src="js/data-guides.js"></script>
+  <script src="js/readiness.js"></script>
   <script src="js/simulators.js"></script>
   <script src="js/app.js"></script>
 </body>
