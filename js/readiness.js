@@ -80,7 +80,7 @@ window.AZ104_READINESS = (function () {
     const isBlitz = state.planMode === "blitz";
     const mockLogs = Array.isArray(state.mockLogs) ? state.mockLogs : [];
 
-    // 1. Blueprint counts per domain
+    // 1. Blueprint counts per domain (includes auto-checked objectives from completed labs/sprints/capstones!)
     const bpTotal = {}, bpDone = {};
     MS_BLUEPRINT.forEach((d, di) => {
       bpTotal[d.id] = 0;
@@ -88,7 +88,8 @@ window.AZ104_READINESS = (function () {
       d.groups.forEach((g, gi) => {
         g.items.forEach((_, ii) => {
           bpTotal[d.id]++;
-          if (state.blueprintChecked && state.blueprintChecked[`bp_${di}_${gi}_${ii}`]) {
+          const st = window.AZ104_GUIDES.getObjectiveStatus(`bp_${di}_${gi}_${ii}`, state);
+          if (st.done) {
             bpDone[d.id]++;
           }
         });

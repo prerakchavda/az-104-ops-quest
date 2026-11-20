@@ -383,7 +383,7 @@
     });
   });
 
-  function renderGuideDrawerHtml(guide, drawerId) {
+  function renderGuideDrawerHtml(guide, drawerId, linkedBpEntries) {
     const msLabLinks = (guide.msLabs || []).map(k => {
       const l = OFFICIAL_MS_LABS[k];
       if (!l) return "";
@@ -393,6 +393,20 @@
     const docLinks = (guide.docLinks || []).map(d =>
       `<a href="${d.url}" target="_blank" rel="noopener" class="btn btn-sm">↗ MS Learn: ${d.label}</a>`
     ).join("");
+
+    const bpListHtml = (linkedBpEntries && linkedBpEntries.length) ? `
+      <div style="padding:12px 14px; background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:var(--radius-md);">
+        <div style="font-size:12px; font-weight:650; color:var(--text-secondary); margin-bottom:6px;">
+          Official MS Study Guide Objectives Auto-Checked by This Lab (${linkedBpEntries.length})
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          ${linkedBpEntries.map(e => {
+            const st = window.AZ104_GUIDES.getObjectiveStatus(e.bpKey, state);
+            return `<span class="badge ${st.done ? "badge-success" : ""}">${st.done ? "✓ " : ""}${escapeHtml(e.text)}</span>`;
+          }).join("")}
+        </div>
+      </div>
+    ` : "";
 
     return `
       <div class="guide-drawer">
@@ -404,6 +418,8 @@
             </div>
             <span class="badge mono">${escapeHtml(guide.repoScript || "")}</span>
           </div>
+
+          ${bpListHtml}
 
           <!-- Official MS Hosted Lab & Doc Links -->
           <div>
@@ -460,6 +476,11 @@
     });
   }
 
+  function clearManualUnchecks(entries) {
+    if (!state.blueprintManualUncheck || !entries) return;
+    entries.forEach(e => { delete state.blueprintManualUncheck[e.bpKey]; });
+  }
+
   function renderPlanView() {
     document.querySelectorAll("[data-plan-sub]").forEach(b => {
       b.classList.toggle("active", b.dataset.planSub === state.planSub);
@@ -484,6 +505,7 @@
   }
 
   function renderSteadySchedule(container) {
+    const bpLinks = window.AZ104_GUIDES.buildBlueprintLinks();
     container.innerHTML = WEEKS.map(w => {
       const doneInWeek = w.sprints.filter(s => state.checked[s.id]).length;
       const isOpen = !!state.openWeeks[w.num];
@@ -514,9 +536,10 @@
                 const isChecked = !!state.checked[s.id];
                 const guideOpen = !!state.openGuides[s.id];
                 const guide = getGuideForSprint(s.id);
+                const linkedBp = bpLinks.bySprintId[s.id] || [];
                 const msLabBadges = (guide.msLabs || []).map(k => OFFICIAL_MS_LABS[k] ? OFFICIAL_MS_LABS[k].code : "").filter(Boolean).join(", ");
                 return `
-                  <div>
+                  <div id="sprint-row-${s.id}">
                     <div class="sprint-item">
                       <label class="sprint-left" style="cursor:pointer;">
                         <input type="checkbox" data-sprint="${s.id}" ${isChecked ? "checked" : ""} class="checkbox" />
@@ -525,6 +548,7 @@
                             <span class="mono" style="font-size:12px; font-weight:700; color:var(--text-secondary);">${s.day}</span>
                             <span class="badge">${s.tag}</span>
                             <span class="badge badge-accent mono">MS ${msLabBadges}</span>
+                            ${linkedBp.length ? `<span class="badge ${isChecked ? "badge-success" : ""}">${isChecked ? "✓ Checked" : "Auto-checks"} ${linkedBp.length} Blueprint obj.</span>` : ""}
                           </div>
                           <div style="margin-top:4px; font-size:13.5px; ${isChecked ? "text-decoration:line-through; color:var(--text-tertiary);" : ""}">${s.text}</div>
                         </div>
@@ -533,7 +557,7 @@
                         ${guideOpen ? "Hide Guide ▲" : "Step-by-Step Guide ▼"}
                       </button>
                     </div>
-                    ${guideOpen ? renderGuideDrawerHtml(guide, s.id) : ""}
+                    ${guideOpen ? renderGuideDrawerHtml(guide, s.id, linkedBp) : ""}
                   </div>
                 `;
               }).join("")}
@@ -554,10 +578,15 @@
 
     container.querySelectorAll("[data-sprint]").forEach(cb => {
       cb.addEventListener("change", () => {
-        state.checked[cb.dataset.sprint] = cb.checked;
-        if (cb.checked) recordStudyActivity();
+        const sid = cb.dataset.sprint;
+        state.checked[sid] = cb.checked;
+        if (cb.checked) {
+          clearManualUnchecks(bpLinks.bySprintId[sid]);
+          recordStudyActivity();
+        }
         saveState();
         renderSteadySchedule(container);
+        renderBlueprint();
         renderOverview();
       });
     });
@@ -575,6 +604,7 @@
   }
 
   function renderBlitzSchedule(container) {
+    const bpLinks = window.AZ104_GUIDES.buildBlueprintLinks();
     container.innerHTML = BLITZ_WEEKS.map(w => {
       const doneInWeek = w.days.filter(d => state.blitzChecked && state.blitzChecked[d.id]).length;
       const isOpen = !!state.openBlitzWeeks[w.num];
@@ -599,6 +629,7 @@
               const isChecked = !!(state.blitzChecked && state.blitzChecked[d.id]);
               const guideOpen = !!state.openGuides[d.id];
               const guide = getGuideByKey(d.guide);
+              const linkedBp = bpLinks.byBlitzId[d.id] || [];
               const msLabBadges = (guide.msLabs || []).map(k => OFFICIAL_MS_LABS[k] ? OFFICIAL_MS_LABS[k].code : "").filter(Boolean).join(", ");
               return `
                 <div>
@@ -610,6 +641,7 @@
                           <span class="mono" style="font-size:12px; font-weight:700; color:var(--text-secondary);">${d.day}</span>
                           <strong style="font-size:13.5px;">${d.title}</strong>
                           <span class="badge badge-accent mono">MS ${msLabBadges}</span>
+                          ${linkedBp.length ? `<span class="badge ${isChecked ? "badge-success" : ""}">${isChecked ? "✓ Checked" : "Auto-checks"} ${linkedBp.length} Blueprint obj.</span>` : ""}
                         </div>
                         <div style="margin-top:4px; font-size:13px; color:var(--text-secondary); ${isChecked ? "text-decoration:line-through;" : ""}">${d.task}</div>
                       </div>
@@ -618,7 +650,7 @@
                       ${guideOpen ? "Hide Guide ▲" : "Step-by-Step Guide ▼"}
                     </button>
                   </div>
-                  ${guideOpen ? renderGuideDrawerHtml(guide, d.id) : ""}
+                  ${guideOpen ? renderGuideDrawerHtml(guide, d.id, linkedBp) : ""}
                 </div>
               `;
             }).join("")}
@@ -639,10 +671,15 @@
     container.querySelectorAll("[data-blitz]").forEach(cb => {
       cb.addEventListener("change", () => {
         if (!state.blitzChecked) state.blitzChecked = {};
-        state.blitzChecked[cb.dataset.blitz] = cb.checked;
-        if (cb.checked) recordStudyActivity();
+        const bid = cb.dataset.blitz;
+        state.blitzChecked[bid] = cb.checked;
+        if (cb.checked) {
+          clearManualUnchecks(bpLinks.byBlitzId[bid]);
+          recordStudyActivity();
+        }
         saveState();
         renderBlitzSchedule(container);
+        renderBlueprint();
         renderOverview();
       });
     });
@@ -660,9 +697,11 @@
   }
 
   function renderCapstones(container) {
+    const bpLinks = window.AZ104_GUIDES.buildBlueprintLinks();
     container.innerHTML = INTEGRATION_LABS.map(cap => {
       const isDone = !!(state.capstoneChecked && state.capstoneChecked[cap.id]);
-      const isOpen = state.openGuides[cap.id] !== false; // Open by default on first visit
+      const isOpen = state.openGuides[cap.id] !== false;
+      const linkedBp = bpLinks.byCapstoneId[cap.id] || [];
       return `
         <div class="panel">
           <div class="panel-header">
@@ -673,6 +712,7 @@
                   <span class="badge badge-accent mono">${cap.code}</span>
                   <span class="badge mono">${cap.estTime}</span>
                   ${cap.domainLabels.map(dl => `<span class="badge">${dl}</span>`).join("")}
+                  ${linkedBp.length ? `<span class="badge ${isDone ? "badge-success" : "badge-warning"}">${isDone ? "✓ Auto-checked" : "Auto-checks"} ${linkedBp.length} Blueprint Objectives</span>` : ""}
                 </div>
                 <div class="panel-title" style="margin-top:6px;">${cap.title}</div>
                 <div class="panel-sub">${cap.subtitle}</div>
@@ -684,6 +724,20 @@
           </div>
 
           <div class="${isOpen ? "" : "hidden"} panel-body" style="display:flex; flex-direction:column; gap:16px;">
+            ${linkedBp.length ? `
+              <div style="padding:12px 14px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md);">
+                <div style="font-size:12px; font-weight:650; color:var(--text-secondary); margin-bottom:6px;">
+                  Official MS Study Guide Objectives Auto-Checked When You Complete ${cap.code} (${linkedBp.length})
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                  ${linkedBp.map(e => {
+                    const st = window.AZ104_GUIDES.getObjectiveStatus(e.bpKey, state);
+                    return `<span class="badge ${st.done ? "badge-success" : ""}">${st.done ? "✓ " : ""}${escapeHtml(e.text)}</span>`;
+                  }).join("")}
+                </div>
+              </div>
+            ` : ""}
+
             <div style="padding:12px 14px; background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); font-size:12.5px;" class="mono">
               <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; margin-bottom:4px;">Connected Service Flow</div>
               ${escapeHtml(cap.architecture)}
@@ -726,10 +780,15 @@
     container.querySelectorAll("[data-cap]").forEach(cb => {
       cb.addEventListener("change", () => {
         if (!state.capstoneChecked) state.capstoneChecked = {};
-        state.capstoneChecked[cb.dataset.cap] = cb.checked;
-        if (cb.checked) recordStudyActivity();
+        const cid = cb.dataset.cap;
+        state.capstoneChecked[cid] = cb.checked;
+        if (cb.checked) {
+          clearManualUnchecks(bpLinks.byCapstoneId[cid]);
+          recordStudyActivity();
+        }
         saveState();
         renderCapstones(container);
+        renderBlueprint();
         renderOverview();
       });
     });
@@ -1382,6 +1441,7 @@
     const filtersEl = document.getElementById("bp-filters");
     const listEl = document.getElementById("bp-list");
     if (!state.blueprintChecked) state.blueprintChecked = {};
+    if (!state.blueprintManualUncheck) state.blueprintManualUncheck = {};
 
     let totalItems = 0;
     MS_BLUEPRINT.forEach(d => d.groups.forEach(g => g.items.forEach(() => { totalItems++; })));
@@ -1402,15 +1462,26 @@
         const rows = g.items.map(([text, sprint], ii) => {
           if (q && !text.toLowerCase().includes(q) && !g.name.toLowerCase().includes(q) && !sprint.toLowerCase().includes(q)) return "";
           const key = `bp_${di}_${gi}_${ii}`;
-          const checked = !!state.blueprintChecked[key];
+          const st = window.AZ104_GUIDES.getObjectiveStatus(key, state);
+          const checked = st.done;
+          const entry = st.entry;
+          const msLab = entry && entry.msLab;
           return `
-            <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 12px; border-radius:var(--radius-sm); cursor:pointer;" class="sprint-item">
-              <span style="display:flex; align-items:flex-start; gap:10px; font-size:13.5px;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:9px 12px; border-radius:var(--radius-sm);" class="sprint-item">
+              <label style="display:flex; align-items:flex-start; gap:10px; font-size:13.5px; cursor:pointer; flex:1; min-width:220px;">
                 <input type="checkbox" data-bp-key="${key}" ${checked ? "checked" : ""} class="checkbox" />
-                <span style="${checked ? "text-decoration:line-through; color:var(--text-tertiary);" : ""}">${text}</span>
-              </span>
-              <span class="badge mono">${sprint}</span>
-            </label>
+                <div>
+                  <span style="${checked ? "text-decoration:line-through; color:var(--text-tertiary);" : ""}">${text}</span>
+                  ${st.source && st.source.startsWith("Auto-checked") ? `<span class="badge badge-success" style="margin-left:8px;">✓ ${st.source}</span>` : ""}
+                </div>
+              </label>
+              <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                ${msLab ? `<a href="${msLab.url}" target="_blank" rel="noopener" class="badge badge-accent mono" title="${escapeHtml(msLab.title)}">↗ MS ${msLab.code}</a>` : ""}
+                <button data-bp-jump="${entry ? entry.primarySprint : "w1d1"}" data-bp-week="${entry ? entry.weekNum : 1}" class="btn btn-sm mono" title="Open step-by-step lab guide for ${sprint}">
+                  Open Lab (${sprint}) →
+                </button>
+              </div>
+            </div>
           `;
         }).filter(Boolean).join("");
         if (!rows) return "";
@@ -1438,11 +1509,33 @@
 
     listEl.querySelectorAll("[data-bp-key]").forEach(cb => {
       cb.addEventListener("change", () => {
-        state.blueprintChecked[cb.dataset.bpKey] = cb.checked;
-        if (cb.checked) recordStudyActivity();
+        const key = cb.dataset.bpKey;
+        if (cb.checked) {
+          state.blueprintChecked[key] = true;
+          delete state.blueprintManualUncheck[key];
+          recordStudyActivity();
+        } else {
+          state.blueprintChecked[key] = false;
+          state.blueprintManualUncheck[key] = true;
+        }
         saveState();
         renderBlueprint();
         renderOverview();
+      });
+    });
+
+    listEl.querySelectorAll("[data-bp-jump]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sprintId = btn.dataset.bpJump;
+        const wk = Number(btn.dataset.bpWeek) || 1;
+        state.planSub = "steady";
+        state.openWeeks[wk] = true;
+        state.openGuides[sprintId] = true;
+        switchView("plan");
+        setTimeout(() => {
+          const row = document.getElementById("sprint-row-" + sprintId);
+          if (row) row.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 60);
       });
     });
   }

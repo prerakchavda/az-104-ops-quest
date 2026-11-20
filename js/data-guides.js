@@ -1,6 +1,6 @@
 // =============================================================================
 // AZ-104 OPS QUEST — STEP-BY-STEP GUIDES, 14 OFFICIAL MS LABS,
-// 4 MULTI-DOMAIN INTEGRATION CAPSTONES & 21-DAY INTENSIVE BLITZ PLAN
+// 4 MULTI-DOMAIN INTEGRATION CAPSTONES, 21-DAY BLITZ & BLUEPRINT <-> LAB SYNC
 // =============================================================================
 
 window.AZ104_GUIDES = (function () {
@@ -34,6 +34,7 @@ window.AZ104_GUIDES = (function () {
       subtitle: "Wire a Linux VM in App Spoke to read/write Blob Storage in Data Spoke over a Private Endpoint using Managed Identity — with zero storage keys and public access disabled.",
       domains: ["identity", "networking", "storage", "compute"],
       domainLabels: ["Identity & RBAC", "VNet Peering & Private DNS", "Storage Private Endpoint", "VM Managed Identity"],
+      coversSprints: ["w1d2", "w1d3", "w2d2", "w3d1", "w3d2", "w4d2"],
       estTime: "40 min",
       repoFile: "labs/integration-labs/lab-01-private-data-pipeline.md",
       repoScript: "labs/integration-labs/lab-01-deploy.sh",
@@ -69,6 +70,7 @@ az role assignment create --assignee $VM_PRINCIPAL_ID \\
       subtitle: "Deploy 2 private nginx VMs in an Availability Set behind a Standard Public Load Balancer using Bicep, protected by 2-gate Subnet & NIC NSGs and managed via Azure Bastion.",
       domains: ["compute", "networking", "identity"],
       domainLabels: ["Bicep & Availability Set", "Standard LB & Health Probes", "2-Gate NSGs & Bastion /26", "Private DNS Auto-Reg"],
+      coversSprints: ["w2d1", "w2d3", "w4d1", "w4d4", "w6d1", "w6d2", "w6d3", "w6d4"],
       estTime: "40 min",
       repoFile: "labs/integration-labs/lab-02-zero-public-ip-ha-web.md",
       repoScript: "labs/integration-labs/lab-02-deploy.bicep",
@@ -102,6 +104,7 @@ curl http://$LB_IP`,
       subtitle: "Enforce tag governance via Azure Policy, run a zero-downtime App Service staging slot swap with slot-sticky database settings, and mount an Azure File Share into an OnFailure ACI container.",
       domains: ["identity", "compute", "storage"],
       domainLabels: ["Azure Policy & Remediation", "App Service Slots & Sticky Config", "ACI OnFailure Batch Container", "Azure Files SMB Volume"],
+      coversSprints: ["w1d4", "w5d1", "w5d2", "w5d3", "w5d4"],
       estTime: "35 min",
       repoFile: "labs/integration-labs/lab-03-governed-modern-app-stack.md",
       repoScript: "labs/integration-labs/lab-03-deploy.sh",
@@ -134,6 +137,7 @@ az webapp config appsettings list -g rg-northstar-ephemeral -n $APP_NAME -o tabl
       subtitle: "Centralize platform logs into Log Analytics, configure Action Groups + Maintenance Alert Processing Rules, pinpoint a UDR blackhole with Network Watcher, and test Same-Region Backup vs Target-Region ASR.",
       domains: ["monitor", "networking", "compute", "storage"],
       domainLabels: ["Log Analytics, KQL & Alerts", "Alert Processing Rules", "Network Watcher IP Flow & Next Hop", "Recovery & Backup Vaults"],
+      coversSprints: ["w2d4", "w7d1", "w7d2", "w7d3", "w7d4", "w7d5"],
       estTime: "40 min",
       repoFile: "labs/integration-labs/lab-04-observability-and-dr-drill.md",
       repoScript: "labs/integration-labs/lab-04-deploy.sh",
@@ -162,10 +166,8 @@ az network watcher show-next-hop -g rg-northstar-ephemeral --vm vm-app-01 \\
 
   // ---------------------------------------------------------------------------
   // DETAILED STEP-BY-STEP GUIDES FOR EACH WEEKLY TOPIC GROUP
-  // Mapped to both 8-Week Steady sprints and 3-Week Intensive Blitz days
   // ---------------------------------------------------------------------------
   const TOPIC_GUIDES = {
-    // WEEK 1: IDENTITY & GOVERNANCE
     w1_identities: {
       title: "Entra ID Users, Groups, Dynamic Membership, Guests & SSPR",
       msLabs: ["lab01"],
@@ -243,8 +245,6 @@ az policy state summarize -g rg-northstar-ephemeral`,
         "Remember: Tags applied to a Resource Group do **not** inherit to child resources automatically — you must use an Azure Policy (`Modify` effect) to inherit tags!"
       ]
     },
-
-    // WEEK 2: VIRTUAL NETWORKING PT 1
     w2_vnets_peering: {
       title: "VNets, -5 IP Subnet Math & Non-Transitive Hub-Spoke Peering",
       msLabs: ["lab04", "lab05"],
@@ -295,8 +295,6 @@ az network route-table route delete -g rg-northstar-core --route-table-name rt-a
         "Memorize Azure route selection precedence: **1. Longest Prefix Match** (`/24` beats `/16`) → on an exact prefix tie: **2. UDR > 3. BGP > 4. System route**."
       ]
     },
-
-    // WEEK 3: STORAGE
     w3_storage_core: {
       title: "Storage Accounts, Redundancy, Blob Tiers, Lifecycle & Object Rep",
       msLabs: ["lab07"],
@@ -348,8 +346,6 @@ azcopy copy "./README.md" "https://<st-name>.blob.core.windows.net/products/READ
         "Contrast **Service Endpoint** (keeps public IP on storage, restricts source to VNet over Microsoft backbone) vs **Private Endpoint** (assigns a private IP `10.2.1.4` inside your subnet + requires `privatelink.blob.core.windows.net` DNS)."
       ]
     },
-
-    // WEEK 4: COMPUTE PT 1 (BICEP & VMS)
     w4_bicep_vms: {
       title: "ARM Templates, Bicep Automation, VMs & Managed Identities",
       msLabs: ["lab03b", "lab08"],
@@ -403,8 +399,6 @@ az vm disk attach -g rg-northstar-ephemeral --vm-name vm-app-01 \\
         "Remember: You **cannot** move an existing VM into an Availability Set — you must delete the VM (keeping its disks) and recreate the VM inside the Availability Set from those disks."
       ]
     },
-
-    // WEEK 5: COMPUTE PT 2 (APP SERVICE & CONTAINERS)
     w5_app_service: {
       title: "App Service Plans, Deployment Slots, Sticky Settings, VNet & TLS",
       msLabs: ["lab09a"],
@@ -459,8 +453,6 @@ az webapp config appsettings set -g rg-northstar-ephemeral -n $NORTHSTAR_APP \\
         "Remember: Mounting an **Azure File Share** in ACI is ONLY supported on **Linux** containers and requires a **Standard** storage account."
       ]
     },
-
-    // WEEK 6: VIRTUAL NETWORKING PT 2 (LB, DNS, BASTION)
     w6_lb_bastion_dns: {
       title: "Standard Load Balancer, Health Probes, Azure DNS & Azure Bastion",
       msLabs: ["lab06"],
@@ -494,8 +486,6 @@ az network nsg rule create -g rg-northstar-core --nsg-name nsg-app-subnet -n All
         "Memorize **Private DNS VNet Link** limits: A VNet can be linked to **many** Private DNS zones for resolution, but can only have **Auto-registration** enabled on **1** Private DNS zone!"
       ]
     },
-
-    // WEEK 7: MONITOR & BACKUP
     w7_monitor_watcher: {
       title: "Azure Monitor, Log Analytics (KQL), Alerts, Processing Rules & Network Watcher",
       msLabs: ["lab11"],
@@ -547,8 +537,6 @@ az monitor log-analytics query -w <workspace-customer-id> \\
         "Know the 4 ASR failover phases: **Test failover** (validates DR in an isolated VNet with zero production impact) → **Planned/Unplanned Failover** → **Commit** → **Reprotect** (reverses replication back to primary region) → **Failback**."
       ]
     },
-
-    // WEEK 8: EXAM READINESS & CASE STUDIES
     w8_exam_mastery: {
       title: "Full-Stack Case Studies, 45-Second Open-Book Lookups & Official Practice Assessment",
       msLabs: ["lab01", "lab05", "lab07", "lab08", "lab10"],
@@ -574,7 +562,6 @@ az group delete --name rg-northstar-core --yes --no-wait`,
     }
   };
 
-  // Map every 8-Week sprint ID (w1d1..w8d5) to its rich Topic Guide
   const SPRINT_TO_GUIDE = {
     w1d1: "w1_identities",   w1d2: "w1_rbac_locks",   w1d3: "w1_rbac_locks",   w1d4: "w1_policy",       w1d5: "w1_policy",
     w2d1: "w2_vnets_peering",w2d2: "w2_vnets_peering",w2d3: "w2_nsg_udr",      w2d4: "w2_nsg_udr",      w2d5: "w2_nsg_udr",
@@ -586,22 +573,19 @@ az group delete --name rg-northstar-core --yes --no-wait`,
     w8d1: "w8_exam_mastery", w8d2: "w8_exam_mastery", w8d3: "w8_exam_mastery", w8d4: "w8_exam_mastery", w8d5: "w8_exam_mastery"
   };
 
-  // ---------------------------------------------------------------------------
-  // 3-WEEK INTENSIVE BLITZ SCHEDULE (21 DAYS)
-  // ---------------------------------------------------------------------------
   const BLITZ_WEEKS = [
     {
       num: 1,
       title: "Week 1 (Days 1–7): Identity, Networking & Storage Core",
       subtitle: "~2 hrs/weekday (three 35m blocks) • 3–4 hrs weekend • Covers ~55% of exam weight",
       days: [
-        { id: "b1", day: "Day 1", domain: "identity",   guide: "w1_identities",       title: "Entra ID Users, Groups, Dynamic P1 Rules, Guests & SSPR", task: "Run labs/week-01-governance/setup.sh + complete MS Lab 01 (Users, Dynamic Groups, B2B Guests, SSPR)." },
-        { id: "b2", day: "Day 2", domain: "identity",   guide: "w1_rbac_locks",       title: "RBAC Scopes, Custom Roles, Resource Locks & Azure Policy", task: "Run sabotage-lock.sh + MS Labs 02a & 02b + test RBAC/Lock/Policy Precedence Simulator." },
-        { id: "b3", day: "Day 3", domain: "networking", guide: "w2_vnets_peering",    title: "VNets, -5 IP Subnet Math & Non-Transitive Hub-Spoke Peering", task: "Run labs/week-02-networking/setup-hub-spoke.sh + MS Labs 04 & 05 + Subnet Planner Simulator." },
-        { id: "b4", day: "Day 4", domain: "networking", guide: "w2_nsg_udr",          title: "2-Gate NSGs (Subnet + NIC), ASGs & User-Defined Routes (UDRs)", task: "Run sabotage-network.sh + test 2-Gate NSG Packet Tracer Simulator + solve Networking P1 Tickets." },
-        { id: "b5", day: "Day 5", domain: "storage",    guide: "w3_storage_core",     title: "StorageV2, Redundancy (LRS/ZRS/GRS/GZRS), Tiers, Lifecycle & Object Rep", task: "Run labs/week-03-storage/setup-storage.sh + MS Lab 07 + configure Lifecycle & Versioning." },
-        { id: "b6", day: "Day 6", domain: "storage",    guide: "w3_storage_security", title: "Storage Firewalls, Private Endpoints + DNS & SAS Stored Access Policies", task: "Run sabotage-storage.sh + test Stored Access Policy SAS revocation + Data Plane RBAC." },
-        { id: "b7", day: "Day 7", domain: "storage",    guide: "w3_storage_security", title: "Weekend Capstone: Zero-Secret Private Data Pipeline (Integration Lab 01)", task: "Complete Integration Capstone Lab 01 end-to-end + Bug Hunts #1–#4 + run scripts/friday-cleanup.sh." }
+        { id: "b1", day: "Day 1", domain: "identity",   guide: "w1_identities",       coversSprints: ["w1d1"], title: "Entra ID Users, Groups, Dynamic P1 Rules, Guests & SSPR", task: "Run labs/week-01-governance/setup.sh + complete MS Lab 01 (Users, Dynamic Groups, B2B Guests, SSPR)." },
+        { id: "b2", day: "Day 2", domain: "identity",   guide: "w1_rbac_locks",       coversSprints: ["w1d2", "w1d3", "w1d4", "w1d5"], title: "RBAC Scopes, Custom Roles, Resource Locks & Azure Policy", task: "Run sabotage-lock.sh + MS Labs 02a & 02b + test RBAC/Lock/Policy Precedence Simulator." },
+        { id: "b3", day: "Day 3", domain: "networking", guide: "w2_vnets_peering",    coversSprints: ["w2d1", "w2d2"], title: "VNets, -5 IP Subnet Math & Non-Transitive Hub-Spoke Peering", task: "Run labs/week-02-networking/setup-hub-spoke.sh + MS Labs 04 & 05 + Subnet Planner Simulator." },
+        { id: "b4", day: "Day 4", domain: "networking", guide: "w2_nsg_udr",          coversSprints: ["w2d3", "w2d4", "w2d5"], title: "2-Gate NSGs (Subnet + NIC), ASGs & User-Defined Routes (UDRs)", task: "Run sabotage-network.sh + test 2-Gate NSG Packet Tracer Simulator + solve Networking P1 Tickets." },
+        { id: "b5", day: "Day 5", domain: "storage",    guide: "w3_storage_core",     coversSprints: ["w3d1", "w3d4"], title: "StorageV2, Redundancy (LRS/ZRS/GRS/GZRS), Tiers, Lifecycle & Object Rep", task: "Run labs/week-03-storage/setup-storage.sh + MS Lab 07 + configure Lifecycle & Versioning." },
+        { id: "b6", day: "Day 6", domain: "storage",    guide: "w3_storage_security", coversSprints: ["w3d2", "w3d3", "w3d5"], title: "Storage Firewalls, Private Endpoints + DNS & SAS Stored Access Policies", task: "Run sabotage-storage.sh + test Stored Access Policy SAS revocation + Data Plane RBAC." },
+        { id: "b7", day: "Day 7", domain: "storage",    guide: "w3_storage_security", coversSprints: ["w1d2", "w1d3", "w2d2", "w3d1", "w3d2", "w4d2"], title: "Weekend Capstone: Zero-Secret Private Data Pipeline (Integration Lab 01)", task: "Complete Integration Capstone Lab 01 end-to-end + Bug Hunts #1–#4 + run scripts/friday-cleanup.sh." }
       ]
     },
     {
@@ -609,13 +593,13 @@ az group delete --name rg-northstar-core --yes --no-wait`,
       title: "Week 2 (Days 8–14): Compute, Load Balancing, Monitor/DR & Baseline Mock",
       subtitle: "Covers remaining ~45% of exam weight + Day 14 Full Baseline Practice Exam",
       days: [
-        { id: "b8",  day: "Day 8",  domain: "compute",    guide: "w4_bicep_vms",        title: "ARM/Bicep Templates, VM Provisioning & Managed Identities", task: "Deploy labs/week-04-compute/main.bicep + debug all 3 bugs in sabotage.bicep + MS Lab 03b." },
-        { id: "b9",  day: "Day 9",  domain: "compute",    guide: "w4_vm_scale_ha",      title: "Availability Sets vs Zones (99.95% vs 99.99%), VMSS, Disks & Moving VMs", task: "Complete MS Lab 08 + hot-attach a data disk + drill VM move and Availability Set recreation traps." },
-        { id: "b10", day: "Day 10", domain: "compute",    guide: "w5_app_service",      title: "App Service Plans, Staging Slots, Sticky Settings, ACR, ACI & ACA", task: "Run Integration Capstone Lab 03 (App Service slots + ACI File Share mount) + MS Labs 09a/09b/09c." },
-        { id: "b11", day: "Day 11", domain: "networking", guide: "w6_lb_bastion_dns",   title: "Standard Load Balancer, Health Probes, Private DNS & Azure Bastion", task: "Deploy Integration Capstone Lab 02 (HA Web Bicep) + sabotage-probe.sh + delete Bastion/LB same night!" },
-        { id: "b12", day: "Day 12", domain: "monitor",    guide: "w7_monitor_watcher",  title: "Azure Monitor, Log Analytics (KQL), Alerts, Processing Rules & Network Watcher", task: "Run setup-monitor.sh + MS Lab 11 + test IP Flow Verify & Next Hop." },
-        { id: "b13", day: "Day 13", domain: "monitor",    guide: "w7_backup_asr",       title: "Recovery Services Vault vs Azure Backup Vault, Soft Delete & ASR", task: "Run Integration Capstone Lab 04 + sabotage-backup.sh + MS Lab 10 + Bug Hunts #5–#8." },
-        { id: "b14", day: "Day 14", domain: "compute",    guide: "w8_exam_mastery",     title: "BASELINE MOCK EXAM DAY (AI Skills Navigator Practice Assessment)", task: "Take a full timed 50-question practice exam, log your per-domain scores in Overview, and identify your top 2 weak domains." }
+        { id: "b8",  day: "Day 8",  domain: "compute",    guide: "w4_bicep_vms",        coversSprints: ["w4d1", "w4d2"], title: "ARM/Bicep Templates, VM Provisioning & Managed Identities", task: "Deploy labs/week-04-compute/main.bicep + debug all 3 bugs in sabotage.bicep + MS Lab 03b." },
+        { id: "b9",  day: "Day 9",  domain: "compute",    guide: "w4_vm_scale_ha",      coversSprints: ["w4d3", "w4d4", "w4d5"], title: "Availability Sets vs Zones (99.95% vs 99.99%), VMSS, Disks & Moving VMs", task: "Complete MS Lab 08 + hot-attach a data disk + drill VM move and Availability Set recreation traps." },
+        { id: "b10", day: "Day 10", domain: "compute",    guide: "w5_app_service",      coversSprints: ["w5d1", "w5d2", "w5d3", "w5d4", "w5d5"], title: "App Service Plans, Staging Slots, Sticky Settings, ACR, ACI & ACA", task: "Run Integration Capstone Lab 03 (App Service slots + ACI File Share mount) + MS Labs 09a/09b/09c." },
+        { id: "b11", day: "Day 11", domain: "networking", guide: "w6_lb_bastion_dns",   coversSprints: ["w6d1", "w6d2", "w6d3", "w6d4", "w6d5"], title: "Standard Load Balancer, Health Probes, Private DNS & Azure Bastion", task: "Deploy Integration Capstone Lab 02 (HA Web Bicep) + sabotage-probe.sh + delete Bastion/LB same night!" },
+        { id: "b12", day: "Day 12", domain: "monitor",    guide: "w7_monitor_watcher",  coversSprints: ["w7d1", "w7d2", "w7d3"], title: "Azure Monitor, Log Analytics (KQL), Alerts, Processing Rules & Network Watcher", task: "Run setup-monitor.sh + MS Lab 11 + test IP Flow Verify & Next Hop." },
+        { id: "b13", day: "Day 13", domain: "monitor",    guide: "w7_backup_asr",       coversSprints: ["w7d4", "w7d5"], title: "Recovery Services Vault vs Azure Backup Vault, Soft Delete & ASR", task: "Run Integration Capstone Lab 04 + sabotage-backup.sh + MS Lab 10 + Bug Hunts #5–#8." },
+        { id: "b14", day: "Day 14", domain: "compute",    guide: "w8_exam_mastery",     coversSprints: ["w8d3"], title: "BASELINE MOCK EXAM DAY (AI Skills Navigator Practice Assessment)", task: "Take a full timed 50-question practice exam, log your per-domain scores in Overview, and identify your top 2 weak domains." }
       ]
     },
     {
@@ -623,16 +607,163 @@ az group delete --name rg-northstar-core --yes --no-wait`,
       title: "Week 3 (Days 15–21): Weak-Spot Surgery, Case Studies & Exam-Day Speed",
       subtitle: "Zero passive studying — 100% targeted repair on your lowest-scoring domains",
       days: [
-        { id: "b15", day: "Day 15", domain: "compute",    guide: "w8_exam_mastery",     title: "Multi-Tab Exam Case Studies (#1 & #2) + Mock #1 Post-Mortem", task: "Complete both Multi-Tab Case Studies in Practice Studio + check off mastered items in the 81-item Blueprint." },
-        { id: "b16", day: "Day 16", domain: "identity",   guide: "w1_rbac_locks",       title: "Weakest Domain Deep Repair (Guided by Overview Tracker)", task: "Click 'Where You Need the Most Work' in Overview → re-run that domain's Capstone Lab, Simulator, and P1 tickets." },
-        { id: "b17", day: "Day 17", domain: "networking", guide: "w8_exam_mastery",     title: "Open-Book 45-Second MS Learn Mastery + Timed Mock Exam #2", task: "Complete all 10 Open-Book 45s Lookups in Practice Studio → take Timed Mock #2 (target 75%+) & log score." },
-        { id: "b18", day: "Day 18", domain: "storage",    guide: "w3_storage_security", title: "2nd-Weakest Domain Repair + Clear Missed-Trap Queue to Zero", task: "Clear every trap in your Spaced-Repetition Missed Queue + hit 15+ in the 60s Exam Trap Speed Run." },
-        { id: "b19", day: "Day 19", domain: "monitor",    guide: "w8_exam_mastery",     title: "Timed Mock Exam #3 (Strict 100-Minute Exam Pace)", task: "Take Mock #3 at real exam pace (max 90s/question before flagging) → target 80%+ and log domain scores." },
-        { id: "b20", day: "Day 20", domain: "identity",   guide: "w8_exam_mastery",     title: "Final 81/81 Blueprint Audit & Full Azure Teardown (90m max)", task: "Verify 81/81 objectives in Blueprint tab, delete rg-northstar-ephemeral & rg-northstar-core, rest early." },
-        { id: "b21", day: "Day 21", domain: "compute",    guide: "w8_exam_mastery",     title: "EXAM DAY — Pass AZ-104 (700+)", task: "Play 1 light 60-second Speed Run to warm up, check in 30 minutes early, use open-book MS Learn only for quick table checks." }
+        { id: "b15", day: "Day 15", domain: "compute",    guide: "w8_exam_mastery",     coversSprints: ["w8d1"], title: "Multi-Tab Exam Case Studies (#1 & #2) + Mock #1 Post-Mortem", task: "Complete both Multi-Tab Case Studies in Practice Studio + check off mastered items in the 81-item Blueprint." },
+        { id: "b16", day: "Day 16", domain: "identity",   guide: "w1_rbac_locks",       coversSprints: ["w1d2", "w1d3"], title: "Weakest Domain Deep Repair (Guided by Overview Tracker)", task: "Click 'Where You Need the Most Work' in Overview → re-run that domain's Capstone Lab, Simulator, and P1 tickets." },
+        { id: "b17", day: "Day 17", domain: "networking", guide: "w8_exam_mastery",     coversSprints: ["w8d2"], title: "Open-Book 45-Second MS Learn Mastery + Timed Mock Exam #2", task: "Complete all 10 Open-Book 45s Lookups in Practice Studio → take Timed Mock #2 (target 75%+) & log score." },
+        { id: "b18", day: "Day 18", domain: "storage",    guide: "w3_storage_security", coversSprints: ["w3d2", "w3d3"], title: "2nd-Weakest Domain Repair + Clear Missed-Trap Queue to Zero", task: "Clear every trap in your Spaced-Repetition Missed Queue + hit 15+ in the 60s Exam Trap Speed Run." },
+        { id: "b19", day: "Day 19", domain: "monitor",    guide: "w8_exam_mastery",     coversSprints: ["w8d4"], title: "Timed Mock Exam #3 (Strict 100-Minute Exam Pace)", task: "Take Mock #3 at real exam pace (max 90s/question before flagging) → target 80%+ and log domain scores." },
+        { id: "b20", day: "Day 20", domain: "identity",   guide: "w8_exam_mastery",     coversSprints: ["w8d5"], title: "Final 81/81 Blueprint Audit & Full Azure Teardown (90m max)", task: "Verify 81/81 objectives in Blueprint tab, delete rg-northstar-ephemeral & rg-northstar-core, rest early." },
+        { id: "b21", day: "Day 21", domain: "compute",    guide: "w8_exam_mastery",     coversSprints: ["w8d5"], title: "EXAM DAY — Pass AZ-104 (700+)", task: "Play 1 light 60-second Speed Run to warm up, check in 30 minutes early, use open-book MS Learn only for quick table checks." }
       ]
     }
   ];
+
+  // ---------------------------------------------------------------------------
+  // AUTOMATIC BLUEPRINT <-> LAB SYNCHRONIZATION ENGINE
+  // Parses "W1 Mon", "W2 Wed & Thu", "W2 Wed & W7 Wed", etc. into exact
+  // Sprint IDs (w1d1), Blitz Day IDs (b1..b21), Capstone IDs (int1..int4),
+  // and Official MS Lab codes (lab01..lab11)
+  // ---------------------------------------------------------------------------
+  const DAY_MAP = { Mon: "d1", Tue: "d2", Wed: "d3", Thu: "d4", Fri: "d5" };
+
+  function parseSprintLabel(label) {
+    // Examples: "W1 Mon", "W1 Mon & Fri", "W2 Wed & Thu", "W2 Wed & W7 Wed", "W6 Mon & Tue"
+    const parts = String(label || "").split("&").map(s => s.trim());
+    let currentWeek = "1";
+    const sprintIds = [];
+    parts.forEach(p => {
+      const mFull = /^W(\d)\s+(Mon|Tue|Wed|Thu|Fri)$/i.exec(p);
+      const mDayOnly = /^(Mon|Tue|Wed|Thu|Fri)$/i.exec(p);
+      if (mFull) {
+        currentWeek = mFull[1];
+        const dKey = mFull[2].charAt(0).toUpperCase() + mFull[2].slice(1).toLowerCase();
+        sprintIds.push(`w${currentWeek}${DAY_MAP[dKey]}`);
+      } else if (mDayOnly) {
+        const dKey = mDayOnly[1].charAt(0).toUpperCase() + mDayOnly[1].slice(1).toLowerCase();
+        sprintIds.push(`w${currentWeek}${DAY_MAP[dKey]}`);
+      }
+    });
+    return sprintIds;
+  }
+
+  let cachedLinks = null;
+
+  function buildBlueprintLinks() {
+    if (cachedLinks) return cachedLinks;
+    const { MS_BLUEPRINT } = window.AZ104_CORE;
+    const byBpKey = {};
+    const bySprintId = {};
+    const byBlitzId = {};
+    const byCapstoneId = {};
+
+    MS_BLUEPRINT.forEach((d, di) => {
+      d.groups.forEach((g, gi) => {
+        g.items.forEach(([text, sprintLabel], ii) => {
+          const bpKey = `bp_${di}_${gi}_${ii}`;
+          const sprintIds = parseSprintLabel(sprintLabel);
+          const primarySprint = sprintIds[0] || "w1d1";
+          const weekNum = Number(primarySprint.charAt(1)) || 1;
+          const guide = TOPIC_GUIDES[SPRINT_TO_GUIDE[primarySprint]] || TOPIC_GUIDES.w1_identities;
+          const msLabKey = (guide.msLabs && guide.msLabs[0]) || "lab01";
+          const msLab = OFFICIAL_MS_LABS[msLabKey];
+
+          // Which Blitz days cover any of these sprintIds?
+          const blitzIds = [];
+          BLITZ_WEEKS.forEach(bw => {
+            bw.days.forEach(bd => {
+              if ((bd.coversSprints || []).some(sid => sprintIds.includes(sid))) {
+                blitzIds.push(bd.id);
+              }
+            });
+          });
+
+          // Which Capstones cover any of these sprintIds?
+          const capIds = [];
+          INTEGRATION_LABS.forEach(cap => {
+            if ((cap.coversSprints || []).some(sid => sprintIds.includes(sid))) {
+              capIds.push(cap.id);
+            }
+          });
+
+          const entry = {
+            bpKey,
+            text,
+            groupName: g.name,
+            domainId: d.id,
+            sprintLabel,
+            sprintIds,
+            primarySprint,
+            weekNum,
+            blitzIds,
+            capIds,
+            msLabKey,
+            msLab
+          };
+
+          byBpKey[bpKey] = entry;
+          sprintIds.forEach(sid => {
+            if (!bySprintId[sid]) bySprintId[sid] = [];
+            bySprintId[sid].push(entry);
+          });
+          blitzIds.forEach(bid => {
+            if (!byBlitzId[bid]) byBlitzId[bid] = [];
+            byBlitzId[bid].push(entry);
+          });
+          capIds.forEach(cid => {
+            if (!byCapstoneId[cid]) byCapstoneId[cid] = [];
+            byCapstoneId[cid].push(entry);
+          });
+        });
+      });
+    });
+
+    cachedLinks = { byBpKey, bySprintId, byBlitzId, byCapstoneId };
+    return cachedLinks;
+  }
+
+  // Returns { done: boolean, source: string|null, entry }
+  function getObjectiveStatus(bpKey, state) {
+    const links = buildBlueprintLinks();
+    const entry = links.byBpKey[bpKey];
+    if (!entry) return { done: false, source: null, entry: null };
+
+    // 1. If user explicitly unchecked it manually, respect that until re-checked
+    if (state.blueprintManualUncheck && state.blueprintManualUncheck[bpKey]) {
+      return { done: false, source: null, entry };
+    }
+
+    // 2. Check if completed via an 8-Week Sprint
+    for (const sid of entry.sprintIds) {
+      if (state.checked && state.checked[sid]) {
+        const w = sid.charAt(1);
+        const dIdx = Number(sid.charAt(3)) - 1;
+        const dName = ["Mon", "Tue", "Wed", "Thu", "Fri"][dIdx] || "";
+        return { done: true, source: `Auto-checked via W${w} ${dName}`, entry };
+      }
+    }
+
+    // 3. Check if completed via a 3-Week Blitz Day
+    for (const bid of entry.blitzIds) {
+      if (state.blitzChecked && state.blitzChecked[bid]) {
+        return { done: true, source: `Auto-checked via Blitz ${bid.toUpperCase()}`, entry };
+      }
+    }
+
+    // 4. Check if completed via a Multi-Domain Capstone Lab
+    for (const cid of entry.capIds) {
+      if (state.capstoneChecked && state.capstoneChecked[cid]) {
+        const cap = INTEGRATION_LABS.find(c => c.id === cid);
+        return { done: true, source: `Auto-checked via ${cap ? cap.code : cid}`, entry };
+      }
+    }
+
+    // 5. Check if manually checked in Blueprint tab
+    if (state.blueprintChecked && state.blueprintChecked[bpKey]) {
+      return { done: true, source: "Checked manually", entry };
+    }
+
+    return { done: false, source: null, entry };
+  }
 
   function getGuideForSprint(sprintId) {
     const key = SPRINT_TO_GUIDE[sprintId] || "w1_identities";
@@ -649,6 +780,8 @@ az group delete --name rg-northstar-core --yes --no-wait`,
     BLITZ_WEEKS,
     TOPIC_GUIDES,
     getGuideForSprint,
-    getGuideByKey
+    getGuideByKey,
+    buildBlueprintLinks,
+    getObjectiveStatus
   };
 })();
